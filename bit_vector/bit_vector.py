@@ -1,8 +1,35 @@
 from __future__ import division
 
 from .compatibility import IntegerTypes, StringTypes
-from .bitutils import seq2int, int2seq
 import numpy as np
+
+#
+# seq to int
+#
+def seq2int(l):
+    n = len(l)
+
+    i = 0
+    for j in range(n):
+        if l[j]:
+            i |= 1 << j
+    return i
+
+#
+# int to seq
+#
+def int2seq(i, n=0):
+    if isinstance(i, StringTypes):
+        i = ord(i)
+
+    # find minimum number of bits needed for i
+    if n == 0:
+        j = i
+        while j:
+            n += 1
+            j >>= 1
+
+    return [1 if i & (1 << j) else 0 for j in range(n)]
 
 
 def type_check_and_promote_ints(fn):
