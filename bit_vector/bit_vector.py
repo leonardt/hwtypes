@@ -111,6 +111,7 @@ class BitVector:
             if other.as_int() < 0:
                 raise ValueError("Cannot shift by negative value {}".format(other))
             shift_result = np.right_shift(self._value,  other._value).item()
+        print(self._value, other._value, shift_result)
         mask = (1 << self.num_bits) - 1
         return BitVector(shift_result & mask, num_bits=self.num_bits)
 
@@ -161,22 +162,30 @@ class BitVector:
 
     @type_check_and_promote_ints
     def __lt__(self, other):
-        return BitVector(int(self._value < other._value), num_bits=1)
+        return BitVector(int(self.as_int() < other.as_int()), num_bits=1)
 
     @type_check_and_promote_ints
     def __le__(self, other):
-        return BitVector(int(self._value <= other._value), num_bits=1)
+        return BitVector(int(self.as_int() <= other.as_int()), num_bits=1)
 
     @type_check_and_promote_ints
     def __gt__(self, other):
-        return BitVector(int(self._value > other._value), num_bits=1)
+        return BitVector(int(self.as_int() > other.as_int()), num_bits=1)
 
     @type_check_and_promote_ints
     def __ge__(self, other):
-        return BitVector(int(self._value >= other._value), num_bits=1)
+        return BitVector(int(self.as_int() >= other.as_int()), num_bits=1)
 
     def as_int(self):
-        return self._value
+        if self.signed:
+            mask = (1 << self.num_bits - 1) - 1
+            val = self._value & mask
+            sign = self._value >> self.num_bits & 1
+            if sign:
+                val *= -1
+            return val
+        else:
+            return self._value
 
     def as_binary_string(self):
         return "0b" + np.binary_repr(self.as_int(), self.num_bits)
