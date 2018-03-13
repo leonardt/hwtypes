@@ -156,9 +156,17 @@ class BitVector:
 
     def __truediv__(self, other):
         assert isinstance(other, BitVector)
-        result = self._value // other._value
-        mask = (1 << self.num_bits) - 1
-        return BitVector(result & mask, num_bits=self.num_bits)
+        if self.signed:
+            result = (~self + 1)._value // (~other + 1)._value
+            our_sign = self._value >> self.num_bits & 1
+            their_sign = other._value >> other.num_bits & 1
+            if our_sign ^ their_sign:
+                result = -result
+            return BitVector(result, num_bits=self.num_bits)
+        else:
+            result = self._value // other._value
+            mask = (1 << self.num_bits) - 1
+            return BitVector(result & mask, num_bits=self.num_bits)
 
     @type_check_and_promote_ints
     def __lt__(self, other):
