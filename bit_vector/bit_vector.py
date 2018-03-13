@@ -105,15 +105,15 @@ class BitVector:
         if isinstance(other, int):
             if other < 0:
                 raise ValueError("Cannot shift by negative value {}".format(other))
-            shift_result = np.right_shift(self._value,  other).item()
+            shift_result = self._value >> other
+            mask = (1 << max((self.num_bits - other), 0)) - 1
         else:
             assert isinstance(other, BitVector)
             if other.as_int() < 0:
                 raise ValueError("Cannot shift by negative value {}".format(other))
-            shift_result = np.right_shift(self._value,  other._value).item()
-        print(self._value, other._value, shift_result)
-        mask = (1 << self.num_bits) - 1
-        return BitVector(shift_result & mask, num_bits=self.num_bits)
+            shift_result = self._value >> other._value
+            mask = (1 << max((self.num_bits - other._value), 0)) - 1
+        return BitVector(shift_result ^ mask, num_bits=self.num_bits)
 
     def arithmetic_shift_right(self, other):
         if isinstance(other, int):
