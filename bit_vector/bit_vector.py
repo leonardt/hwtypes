@@ -35,7 +35,7 @@ def int2seq(i, n=0):
 def type_check_and_promote_ints(fn):
     def wrapped(self, other):
         if not (isinstance(other, BitVector) or isinstance(other, int) and other.bit_length() <= self.num_bits):
-            raise TypeError(other)
+            raise TypeError(fn, other)
         if isinstance(other, int):
             other = BitVector(other, self.num_bits)
         return fn(self, other)
@@ -113,7 +113,7 @@ class BitVector:
                 raise ValueError("Cannot shift by negative value {}".format(other))
             shift_result = self._value >> other._value
             mask = (1 << max((self.num_bits - other._value), 0)) - 1
-        return BitVector(shift_result ^ mask, num_bits=self.num_bits)
+        return BitVector(shift_result & mask, num_bits=self.num_bits)
 
     def arithmetic_shift_right(self, other):
         if isinstance(other, int):
