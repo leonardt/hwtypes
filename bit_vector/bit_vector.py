@@ -47,7 +47,9 @@ class BitVector:
         self.signed = signed
         if isinstance(value, BitVector):
             self._value = value.as_int()
-            self._signed = value.signed
+            # self.signed = value.signed
+            if num_bits is None:
+                num_bits = value.num_bits
             self._bits = int2seq(self._value, num_bits)
         elif isinstance(value, IntegerTypes):
             if num_bits is None:
@@ -188,7 +190,7 @@ class BitVector:
         if self.signed:
             mask = (1 << self.num_bits - 1) - 1
             val = self._value & mask
-            sign = self._value >> self.num_bits & 1
+            sign = self._value >> (self.num_bits - 1) & 1
             if sign:
                 val *= -1
             return val
