@@ -13,7 +13,7 @@ for item in parse_requirements("requirements.txt", session=False):
 
 setup(
     name='bit_vector',
-    version='0.8-alpha',
+    version='0.9-alpha',
     description='A BitVector class for Python',
     scripts=[],
     packages=[
