@@ -188,12 +188,10 @@ class BitVector:
 
     def as_int(self):
         if self.signed:
-            mask = (1 << self.num_bits - 1) - 1
-            val = self._value & mask
-            sign = self._value >> (self.num_bits - 1) & 1
-            if sign:
-                val *= -1
-            return val
+            value = self._value
+            if (value & (1 << (self.num_bits - 1))):
+                value = value - (1 << self.num_bits)
+            return value
         else:
             return self._value
 
