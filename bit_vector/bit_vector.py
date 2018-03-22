@@ -226,7 +226,7 @@ class BitVector:
         return str(self._value)
 
     def __repr__(self):
-        return f"BitVector({self._value}, {self.num_bits})"
+        return "BitVector({0}, {1})".format(self._value, self.num_bits)
 
     def __invert__(self):
         retval = self._value
