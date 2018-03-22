@@ -47,13 +47,17 @@ class BitVector:
         self.signed = signed
         if isinstance(value, BitVector):
             self._value = value.as_int()
-            # self.signed = value.signed
+            self.signed = value.signed
             if num_bits is None:
                 num_bits = value.num_bits
             self._bits = int2seq(self._value, num_bits)
         elif isinstance(value, IntegerTypes):
             if num_bits is None:
                 num_bits = max(value.bit_length(), 1)
+            if self.signed and value < 0:
+                value = value + (1 << num_bits)
+            elif not self.signed and value < 0:
+                raise ValueError()
             self._value = value
             self._bits = int2seq(value, num_bits)
         elif isinstance(value, list):
@@ -212,7 +216,7 @@ class BitVector:
             raise NotImplementedError()
         else:
             if not (isinstance(value, bool) or isinstance(value, int) and value in {0, 1}):
-                raise ValueError(f"Second argument __setitem__ on a single BitVector index should be a boolean or 0 or 1, not {value}")
+                raise ValueError("Second argument __setitem__ on a single BitVector index should be a boolean or 0 or 1, not {value}".format(value=value))
             self._bits[index] = value
 
     def __len__(self):
@@ -225,10 +229,9 @@ class BitVector:
         return f"BitVector({self._value}, {self.num_bits})"
 
     def __invert__(self):
-        retval = ~self._value
-        if not self.signed:
-            retval = retval & (1 << self.num_bits) - 1
-        return BitVector(retval, num_bits=self.num_bits)
+        retval = self._value
+        retval ^= retval
+        return BitVector(retval, num_bits=self.num_bits, signed=self.signed)
 
     def __eq__(self, other):
         if isinstance(other, BitVector):
@@ -244,8 +247,9 @@ class BitVector:
     def __neg__(self):
         if not self.signed:
             raise TypeError("Cannot call __neg__ on unsigned BitVector")
-        sign = self._value >> (self.num_bits - 1)
-        value = self._value ^ (~sign << self.num_bits - 1)
+        value = self._value
+        if (value & (1 << (self.num_bits - 1))):
+            value ^= (1 << self.num_bits - 1)
         return BitVector(value, num_bits=self.num_bits, signed=True)
 
     def __bool__(self):

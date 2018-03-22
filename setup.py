@@ -13,12 +13,12 @@ for item in parse_requirements("requirements.txt", session=False):
 
 setup(
     name='bit_vector',
-    version='0.10-alpha',
+    version='0.12-alpha',
     description='A BitVector class for Python',
     scripts=[],
     packages=[
         "bit_vector",
     ],
     install_requires=install_requires,
-    python_requires='>=3.6'
+    # python_requires='>=3.6'
 )
