@@ -45,7 +45,7 @@ def type_check_and_promote_ints(fn):
 class BitVector:
     def __init__(self, value=0, num_bits=None, signed=None):
         if isinstance(value, BitVector):
-            self._value = value.as_int()
+            self._value = value._value
             if signed is None:
                 self.signed = value.signed
             else:
@@ -54,13 +54,15 @@ class BitVector:
                 num_bits = value.num_bits
             self._bits = int2seq(self._value, num_bits)
         elif isinstance(value, IntegerTypes):
-            self.signed = signed
             if num_bits is None:
                 num_bits = max(value.bit_length(), 1)
-            if self.signed and value < 0:
-                value = value + (1 << num_bits)
-            elif not self.signed and value < 0:
+            if signed is False and value < 0:
                 raise ValueError()
+            elif value >= 0:
+                self.signed = False if signed is None else signed
+            else:
+                value = value + (1 << num_bits)
+                self.signed = True
             self._value = value
             self._bits = int2seq(value, num_bits)
         elif isinstance(value, list):
@@ -233,9 +235,7 @@ class BitVector:
         return "BitVector({0}, {1})".format(self._value, self.num_bits)
 
     def __invert__(self):
-        retval = self._value
-        retval ^= retval
-        return BitVector(retval, num_bits=self.num_bits, signed=self.signed)
+        return BitVector(~self._value, num_bits=self.num_bits, signed=self.signed)
 
     def __eq__(self, other):
         if isinstance(other, BitVector):
