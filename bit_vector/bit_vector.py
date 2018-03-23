@@ -43,15 +43,18 @@ def type_check_and_promote_ints(fn):
 
 
 class BitVector:
-    def __init__(self, value=0, num_bits=None, signed=False):
-        self.signed = signed
+    def __init__(self, value=0, num_bits=None, signed=None):
         if isinstance(value, BitVector):
             self._value = value.as_int()
-            self.signed = value.signed
+            if signed is None:
+                self.signed = value.signed
+            else:
+                self.signed = signed
             if num_bits is None:
                 num_bits = value.num_bits
             self._bits = int2seq(self._value, num_bits)
         elif isinstance(value, IntegerTypes):
+            self.signed = signed
             if num_bits is None:
                 num_bits = max(value.bit_length(), 1)
             if self.signed and value < 0:
@@ -61,6 +64,7 @@ class BitVector:
             self._value = value
             self._bits = int2seq(value, num_bits)
         elif isinstance(value, list):
+            self.signed = signed
             if not (all(x == 0 or x == 1 for x in value) or all(x == False or x == True for x in value)):
                 raise Exception("BitVector list initialization must be a list of 0s and 1s or a list of True and False")
             if num_bits is None:
@@ -247,10 +251,7 @@ class BitVector:
     def __neg__(self):
         if not self.signed:
             raise TypeError("Cannot call __neg__ on unsigned BitVector")
-        value = self._value
-        if (value & (1 << (self.num_bits - 1))):
-            value ^= (1 << self.num_bits - 1)
-        return BitVector(value, num_bits=self.num_bits, signed=True)
+        return BitVector(~self._value + 1, num_bits=self.num_bits, signed=True)
 
     def __bool__(self):
         return bool(self.as_int())
