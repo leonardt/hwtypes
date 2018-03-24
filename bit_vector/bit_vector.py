@@ -211,11 +211,18 @@ class BitVector:
     def as_bool_list(self):
         return [bool(x) for x in self._bits]
 
+    @property
+    def bits(self):
+        return int2seq(self._value)
+
+    def bit_string(self):
+        return "".join(str(int(i)) for i in self.bits())
+
     def __getitem__(self, index):
         if isinstance(index, slice):
             return BitVector(self._bits[index])
         else:
-            return self._bits[index]
+            return self.bits()[index]
 
     def __setitem__(self, index, value):
         if isinstance(index, slice):
