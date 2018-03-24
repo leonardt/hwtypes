@@ -216,7 +216,7 @@ class BitVector:
         return int2seq(self._value)
 
     def bit_string(self):
-        return "".join(str(int(i)) for i in self.bits())
+        return "".join(str(int(i)) for i in reversed(self.bits()))
 
     def __getitem__(self, index):
         if isinstance(index, slice):
@@ -242,7 +242,7 @@ class BitVector:
         return "BitVector({0}, {1})".format(self._value, self.num_bits)
 
     def __invert__(self):
-        return BitVector(~self._value, num_bits=self.num_bits, signed=self.signed)
+        return BitVector(~self._value + (1<<self.num_bits), num_bits=self.num_bits, signed=self.signed)
 
     def __eq__(self, other):
         if isinstance(other, BitVector):
