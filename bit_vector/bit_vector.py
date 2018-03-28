@@ -156,9 +156,11 @@ class BitVector:
 
     def __mul__(self, other):
         assert isinstance(other, BitVector)
-        result = self._value * other._value
-        mask = (1 << self.num_bits) - 1
-        return BitVector(result & mask, num_bits=self.num_bits)
+        result = self.as_int() * other.as_int()
+        if result < 0:
+            result += (1 << (self.num_bits * 2))
+        mask = (1 << (self.num_bits * 2)) - 1
+        return BitVector(result & mask, num_bits=self.num_bits * 2)
 
     def __div__(self, other):
         assert isinstance(other, BitVector)
