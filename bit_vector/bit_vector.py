@@ -207,6 +207,10 @@ class BitVector:
         else:
             return self._value
 
+
+    def __int__(self):
+        return self.as_int()
+
     def as_binary_string(self):
         return "0b" + np.binary_repr(self.as_int(), self.num_bits)
 
