@@ -13,6 +13,9 @@ for item in parse_requirements("requirements.txt", session=False):
 
 setup(
     name='bit_vector',
+    url='https://github.com/leonardt/bit_vector',
+    author='Leonard Truong',
+    author_email='lenny@cs.stanford.edu'
     version='0.20-alpha',
     description='A BitVector class for Python',
     scripts=[],
