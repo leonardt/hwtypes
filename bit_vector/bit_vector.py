@@ -1,5 +1,4 @@
 from __future__ import division
-
 from .compatibility import IntegerTypes, StringTypes
 import numpy as np
 
@@ -41,6 +40,27 @@ def type_check_and_promote_ints(fn):
         return fn(self, other)
     return wrapped
 
+# For many operations only support use of X values if both operands are X
+def handle_both_x(fn):
+    def wrapped(self, other):
+        if isinstance(other, BitVector):
+            if self._value is None and other._value is None:
+                return BitVector(None, num_bits=self.num_bits)
+            elif self._value is None or other._value is None:
+                raise Exception("Invalid use of X value")
+        elif self._value is None:
+            raise Exception("Invalid use of X value")
+        return fn(self, other)
+
+    return wrapped
+
+def no_x_support(fn):
+    def wrapped(self):
+        if self._value is None:
+            raise Exception("Invalid use of X value")
+        return fn(self)
+
+    return wrapped
 
 class BitVector:
     def __init__(self, value=0, num_bits=None, signed=None):
@@ -75,27 +95,44 @@ class BitVector:
             self._bits = value
             if self.signed and self._bits[-1]:
                 self._value -= (1 << num_bits)
+        elif value is None:
+            self._value = None
+            self._bits = None
+            if num_bits == 0:
+                raise Exception("X valued BitVector requires an explicit width")
         else:
             raise Exception("BitVector initialization with type {} not supported".format(type(value)))
         self.num_bits = num_bits
+        if self._value is not None and self._value.bit_length() > self.num_bits:
+            raise Exception("BitVector initialized with too small a width")
 
     @type_check_and_promote_ints
+    @handle_both_x
     def __and__(self, other):
         assert isinstance(other, BitVector)
         return BitVector(self._value & other._value, num_bits=self.num_bits)
 
     @type_check_and_promote_ints
     def __rand__(self, other):
-        return BitVector(self._value & other._value, num_bits=self.num_bits)
+        return self.__and__(other);
 
     def __or__(self, other):
         assert isinstance(other, BitVector)
-        return BitVector(self._value | other._value, num_bits=self.num_bits)
+        if self._value is None and other._value is None:
+            return BitVector(None, num_bits=self.num_bits)
+        elif self._value is True or other._value is True: # Handle one X
+            return BitVector(True, num_bits=self.num_bits)
+        elif self._value is None or other._value is None:
+            raise Exception("Invalid use of X value")
+        else:
+            return BitVector(False, num_bits=self.num_bits)
 
+    @handle_both_x 
     def __xor__(self, other):
         assert isinstance(other, BitVector)
         return BitVector(self._value ^ other._value, num_bits=self.num_bits)
 
+    @handle_both_x
     def __lshift__(self, other):
         if isinstance(other, int):
             if other < 0:
@@ -109,6 +146,7 @@ class BitVector:
         mask = (1 << self.num_bits) - 1
         return BitVector(shift_result & mask, num_bits=self.num_bits)
 
+    @handle_both_x
     def __rshift__(self, other):
         """
         numpy.right_shift is a logical right shift, Python defaults to arithmetic
@@ -127,6 +165,7 @@ class BitVector:
             mask = (1 << max((self.num_bits - other._value), 0)) - 1
         return BitVector(shift_result & mask, num_bits=self.num_bits)
 
+    @handle_both_x
     def arithmetic_shift_right(self, other):
         if isinstance(other, int):
             if other < 0:
@@ -141,6 +180,7 @@ class BitVector:
         return BitVector(shift_result & mask, num_bits=self.num_bits)
 
     @type_check_and_promote_ints
+    @handle_both_x
     def __add__(self, other):
         assert isinstance(other, BitVector)
         result = self._value + other._value
@@ -148,12 +188,14 @@ class BitVector:
         return BitVector(result & mask, num_bits=self.num_bits)
 
     @type_check_and_promote_ints
+    @handle_both_x
     def __sub__(self, other):
         assert isinstance(other, BitVector)
         result = self._value - other._value
         mask = (1 << self.num_bits) - 1
         return BitVector(result & mask, num_bits=self.num_bits)
 
+    @handle_both_x
     def __mul__(self, other):
         assert isinstance(other, BitVector)
         result = self.as_int() * other.as_int()
@@ -162,12 +204,14 @@ class BitVector:
         mask = (1 << (self.num_bits * 2)) - 1
         return BitVector(result & mask, num_bits=self.num_bits * 2)
 
+    @handle_both_x
     def __div__(self, other):
         assert isinstance(other, BitVector)
         result = self._value // other._value
         mask = (1 << self.num_bits) - 1
         return BitVector(result & mask, num_bits=self.num_bits)
 
+    @handle_both_x
     def __truediv__(self, other):
         assert isinstance(other, BitVector)
         if self.signed:
@@ -183,21 +227,26 @@ class BitVector:
             return BitVector(result & mask, num_bits=self.num_bits)
 
     @type_check_and_promote_ints
+    @handle_both_x
     def __lt__(self, other):
         return BitVector(int(self.as_int() < other.as_int()), num_bits=1)
 
     @type_check_and_promote_ints
+    @handle_both_x
     def __le__(self, other):
         return BitVector(int(self.as_int() <= other.as_int()), num_bits=1)
 
     @type_check_and_promote_ints
+    @handle_both_x
     def __gt__(self, other):
         return BitVector(int(self.as_int() > other.as_int()), num_bits=1)
 
     @type_check_and_promote_ints
+    @handle_both_x
     def __ge__(self, other):
         return BitVector(int(self.as_int() >= other.as_int()), num_bits=1)
 
+    @no_x_support
     def as_int(self):
         if self.signed:
             value = self._value
@@ -212,24 +261,32 @@ class BitVector:
         return self.as_int()
 
     def as_binary_string(self):
-        return "0b" + np.binary_repr(self.as_int(), self.num_bits)
+        if self._value is None:
+            return "0bX"
+        else:
+            return "0b" + np.binary_repr(self.as_int(), self.num_bits)
 
+    @no_x_support
     def as_bool_list(self):
         return [bool(x) for x in self._bits]
 
     @property
+    @no_x_support
     def bits(self):
         return int2seq(self._value)
 
+    @no_x_support
     def bit_string(self):
         return "".join(str(int(i)) for i in reversed(self.bits()))
 
+    @no_x_support
     def __getitem__(self, index):
         if isinstance(index, slice):
             return BitVector(self._bits[index])
         else:
             return self.bits()[index]
 
+    @no_x_support
     def __setitem__(self, index, value):
         if isinstance(index, slice):
             raise NotImplementedError()
@@ -242,13 +299,19 @@ class BitVector:
         return self.num_bits
 
     def __str__(self):
-        return str(self._value)
+        if self._value is None:
+            return "X"
+        else:
+            return str(self._value)
 
     def __repr__(self):
-        return "BitVector({0}, {1})".format(self._value, self.num_bits)
+        return "BitVector({0}, {1})".format(str(self), self.num_bits)
 
     def __invert__(self):
-        return BitVector(~self._value + (1<<self.num_bits), num_bits=self.num_bits, signed=self.signed)
+        if self._value is None:
+            return BitVector(None, num_bits=self.num_bits)
+        else:
+            return BitVector(~self._value + (1<<self.num_bits), num_bits=self.num_bits, signed=self.signed)
 
     def __eq__(self, other):
         if isinstance(other, BitVector):
@@ -261,6 +324,7 @@ class BitVector:
             return self.as_int() == other
         raise NotImplementedError(type(other))
 
+    @no_x_support
     def __neg__(self):
         if not self.signed:
             raise TypeError("Cannot call __neg__ on unsigned BitVector")
