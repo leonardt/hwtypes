@@ -335,4 +335,7 @@ class BitVector:
 
     def bits(self):
         return self.as_bool_list()
-
+    
+    @property
+    def unsigned_value(self):
+        return self._value
