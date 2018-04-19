@@ -125,7 +125,7 @@ class BitVector:
         elif self._value is None or other._value is None:
             raise Exception("Invalid use of X value")
         else:
-            return BitVector(False, num_bits=self.num_bits)
+            return BitVector(self._value | other._value, num_bits=self.num_bits)
 
     @handle_both_x 
     def __xor__(self, other):
