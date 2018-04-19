@@ -279,14 +279,14 @@ class BitVector:
     def bit_string(self):
         return "".join(str(int(i)) for i in reversed(self.bits()))
 
-    @no_x_support
+    # @no_x_support
     def __getitem__(self, index):
         if isinstance(index, slice):
             return BitVector(self._bits[index])
         else:
             return self.bits()[index]
 
-    @no_x_support
+    # @no_x_support
     def __setitem__(self, index, value):
         if isinstance(index, slice):
             raise NotImplementedError()
