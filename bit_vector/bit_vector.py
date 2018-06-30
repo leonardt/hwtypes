@@ -339,3 +339,10 @@ class BitVector:
     @property
     def unsigned_value(self):
         return self._value
+
+    # Note: In concat(x, y), the MSB of the result is the MSB of x.
+    @staticmethod
+    def concat(x, y):
+        bits = y.bits()
+        bits.extend(x.bits())
+        return BitVector(bits)
