@@ -45,7 +45,7 @@ def handle_both_x(fn):
     def wrapped(self, other):
         if isinstance(other, BitVector):
             if self._value is None and other._value is None:
-                return BitVector(None, num_bits=self.num_bits)
+                return BitVector(None, num_bits=self.num_bits, signed=self.signed)
             elif self._value is None or other._value is None:
                 raise Exception("Invalid use of X value")
         elif self._value is None:
@@ -110,7 +110,7 @@ class BitVector:
     @handle_both_x
     def __and__(self, other):
         assert isinstance(other, BitVector)
-        return BitVector(self._value & other._value, num_bits=self.num_bits)
+        return BitVector(self._value & other._value, num_bits=self.num_bits, signed=self.signed)
 
     @type_check_and_promote_ints
     def __rand__(self, other):
@@ -119,18 +119,18 @@ class BitVector:
     def __or__(self, other):
         assert isinstance(other, BitVector)
         if self._value is None and other._value is None:
-            return BitVector(None, num_bits=self.num_bits)
+            return BitVector(None, num_bits=self.num_bits, signed=self.signed)
         elif self._value is True or other._value is True: # Handle one X
-            return BitVector(True, num_bits=self.num_bits)
+            return BitVector(True, num_bits=self.num_bits, signed=self.signed)
         elif self._value is None or other._value is None:
             raise Exception("Invalid use of X value")
         else:
-            return BitVector(self._value | other._value, num_bits=self.num_bits)
+            return BitVector(self._value | other._value, num_bits=self.num_bits, signed=self.signed)
 
-    @handle_both_x 
+    @handle_both_x
     def __xor__(self, other):
         assert isinstance(other, BitVector)
-        return BitVector(self._value ^ other._value, num_bits=self.num_bits)
+        return BitVector(self._value ^ other._value, num_bits=self.num_bits, signed=self.signed)
 
     @handle_both_x
     def __lshift__(self, other):
@@ -144,7 +144,7 @@ class BitVector:
                 raise ValueError("Cannot shift by negative value {}".format(other))
             shift_result = self._value << other._value
         mask = (1 << self.num_bits) - 1
-        return BitVector(shift_result & mask, num_bits=self.num_bits)
+        return BitVector(shift_result & mask, num_bits=self.num_bits, signed=self.signed)
 
     @handle_both_x
     def __rshift__(self, other):
@@ -163,7 +163,7 @@ class BitVector:
                 raise ValueError("Cannot shift by negative value {}".format(other))
             shift_result = self._value >> other._value
             mask = (1 << max((self.num_bits - other._value), 0)) - 1
-        return BitVector(shift_result & mask, num_bits=self.num_bits)
+        return BitVector(shift_result & mask, num_bits=self.num_bits, signed=self.signed)
 
     @handle_both_x
     def arithmetic_shift_right(self, other):
@@ -177,7 +177,7 @@ class BitVector:
                 raise ValueError("Cannot shift by negative value {}".format(other))
             shift_result = self._value >> other._value
         mask = (1 << self.num_bits) - 1
-        return BitVector(shift_result & mask, num_bits=self.num_bits)
+        return BitVector(shift_result & mask, num_bits=self.num_bits, signed=self.signed)
 
     @type_check_and_promote_ints
     @handle_both_x
@@ -185,7 +185,7 @@ class BitVector:
         assert isinstance(other, BitVector)
         result = self._value + other._value
         mask = (1 << self.num_bits) - 1
-        return BitVector(result & mask, num_bits=self.num_bits)
+        return BitVector(result & mask, num_bits=self.num_bits, signed=self.signed)
 
     @type_check_and_promote_ints
     @handle_both_x
@@ -193,7 +193,7 @@ class BitVector:
         assert isinstance(other, BitVector)
         result = self._value - other._value
         mask = (1 << self.num_bits) - 1
-        return BitVector(result & mask, num_bits=self.num_bits)
+        return BitVector(result & mask, num_bits=self.num_bits, signed=self.signed)
 
     @handle_both_x
     def __mul__(self, other):
@@ -202,17 +202,10 @@ class BitVector:
         if result < 0:
             result += (1 << (self.num_bits * 2))
         mask = (1 << (self.num_bits * 2)) - 1
-        return BitVector(result & mask, num_bits=self.num_bits * 2)
+        return BitVector(result & mask, num_bits=self.num_bits * 2, signed=self.signed)
 
     @handle_both_x
     def __div__(self, other):
-        assert isinstance(other, BitVector)
-        result = self._value // other._value
-        mask = (1 << self.num_bits) - 1
-        return BitVector(result & mask, num_bits=self.num_bits)
-
-    @handle_both_x
-    def __truediv__(self, other):
         assert isinstance(other, BitVector)
         if self.signed:
             result = (~self + 1)._value // (~other + 1)._value
@@ -220,11 +213,15 @@ class BitVector:
             their_sign = other._value >> other.num_bits & 1
             if our_sign ^ their_sign:
                 result = -result
-            return BitVector(result, num_bits=self.num_bits)
+            print(result)
+            return BitVector(result, num_bits=self.num_bits, signed=self.signed)
         else:
             result = self._value // other._value
             mask = (1 << self.num_bits) - 1
-            return BitVector(result & mask, num_bits=self.num_bits)
+            return BitVector(result & mask, num_bits=self.num_bits, signed=self.signed)
+
+    __floordiv__ = __div__
+    __truediv__ = __div__
 
     @type_check_and_promote_ints
     @handle_both_x
@@ -309,7 +306,7 @@ class BitVector:
 
     def __invert__(self):
         if self._value is None:
-            return BitVector(None, num_bits=self.num_bits)
+            return BitVector(None, num_bits=self.num_bits, signed=self.signed)
         else:
             return BitVector(~self._value + (1<<self.num_bits), num_bits=self.num_bits, signed=self.signed)
 
@@ -335,7 +332,7 @@ class BitVector:
 
     def bits(self):
         return self.as_bool_list()
-    
+
     @property
     def unsigned_value(self):
         return self._value

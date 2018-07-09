@@ -2,3 +2,4 @@ build
 bit_vector.egg-info
 __pycache__
 dist
+.cache
