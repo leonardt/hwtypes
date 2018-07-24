@@ -93,8 +93,6 @@ class BitVector:
                 num_bits = len(value)
             self._value = seq2int(value)
             self._bits = value
-            if self.signed and self._bits[-1]:
-                self._value -= (1 << num_bits)
         elif value is None:
             self._value = None
             self._bits = None
