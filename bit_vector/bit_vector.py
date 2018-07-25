@@ -104,6 +104,9 @@ class BitVector:
         if self._value is not None and self._value.bit_length() > self.num_bits:
             raise Exception("BitVector initialized with too small a width")
 
+    def __hash__(self):
+        return self.unsigned_value
+
     @type_check_and_promote_ints
     @handle_both_x
     def __and__(self, other):
