@@ -293,6 +293,9 @@ class BitVector:
     def __len__(self):
         return self.num_bits
 
+    def is_x(self):
+        return self._value is None
+
     def __str__(self):
         if self._value is None:
             return "X"
@@ -309,7 +312,11 @@ class BitVector:
             return BitVector(~self._value + (1<<self.num_bits), num_bits=self.num_bits, signed=self.signed)
 
     def __eq__(self, other):
-        if isinstance(other, BitVector):
+        if self.is_x() and isinstance(other, BitVector) or \
+                isinstance(other, list) and \
+                all(isinstance(x, bool) for x in other):
+            return True
+        elif isinstance(other, BitVector):
             return BitVector(self._value == other._value, num_bits=1)
         elif isinstance(other, list) and all(isinstance(x, bool) for x in other):
             return self.as_bool_list() == other
