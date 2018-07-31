@@ -41,7 +41,7 @@ def unary(fn):
 
 def binary(fn):
     def wrapped(self, other):
-        # promote it
+        # promote int
         if isinstance(other, int):
             other = BitVector(other, self.num_bits)
 
@@ -52,7 +52,7 @@ def binary(fn):
         # handle binary x
         if isinstance(other, BitVector):
             if self._value is None and other._value is None:
-                return T(None, num_bits=self.num_bits)
+                return BitVector(None, num_bits=self.num_bits)
             elif self._value is None or other._value is None:
                 raise Exception("Invalid use of X value")
         elif self._value is None:
@@ -84,6 +84,7 @@ class BitVector:
             if num_bits is None:
                 num_bits = max(value.bit_length(), 1)
             self._value = value
+            self._value &= (1 << num_bits)-1
             self._bits = int2seq(value, num_bits)
         elif isinstance(value, list):
             if not (all(x == 0 or x == 1 for x in value) or all(x == False or x == True for x in value)):
@@ -93,17 +94,17 @@ class BitVector:
             self._value = seq2int(value)
             self._bits = value
         elif value is None:
+            if num_bits is None:
+                raise Exception("X valued BitVector requires an explicit width")
             self._value = None
             self._bits = None
-            if num_bits == 0:
-                raise Exception("X valued BitVector requires an explicit width")
         else:
             raise Exception("BitVector initialization with type {} not supported".format(type(value)))
 
-        if num_bits <= 0:
-            raise ValueError(f"num_bits {num_bots} should be > 0")
         self.num_bits = num_bits
-        self._value &= (1 << num_bits)-1
+        if self._value is not None and self._value.bit_length() > self.num_bits:
+            raise Exception("BitVector initialized with too small a width")
+
 
     def __hash__(self):
         return self._value
