@@ -34,7 +34,7 @@ def test_operator_uint1(op, reference, width):
                               (operator.add,    lambda x, y: x + y ),
                               (operator.sub,    lambda x, y: x - y ),
                               (operator.mul,    lambda x, y: x * y ),
-                              (operator.floordiv,    lambda x, y: x // y ),
+                              (operator.floordiv,    lambda x, y: x // y if y != 0 else 1 ),
                           ])
 @pytest.mark.parametrize("width", WIDTHS)
 def test_operator_uint2(op, reference, width):

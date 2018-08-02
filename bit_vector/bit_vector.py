@@ -39,10 +39,33 @@ def unary(fn):
 
     return wrapped
 
+def binary_no_cast(fn):
+    def wrapped(self, other):
+        # promote bool and int
+        if isinstance(other, (int, bool)):
+            other = BitVector(other, self.num_bits)
+
+        # type check
+        if not (isinstance(other, BitVector) or isinstance(other, int) and other.bit_length() <= self.num_bits):
+            raise TypeError(fn, other)
+
+        # handle binary x
+        if isinstance(other, BitVector):
+            if self._value is None and other._value is None:
+                #return BitVector(None, num_bits=self.num_bits)
+                return BitVector(1, num_bits=self.num_bits)
+            elif self._value is None or other._value is None:
+                raise Exception("Invalid use of X value")
+        elif self._value is None:
+            raise Exception("Invalid use of X value")
+
+        return fn(self, other)
+    return wrapped
+
 def binary(fn):
     def wrapped(self, other):
-        # promote int
-        if isinstance(other, int):
+        # promote bool and int
+        if isinstance(other, (int, bool)):
             other = BitVector(other, self.num_bits)
 
         # type check
@@ -118,7 +141,7 @@ class BitVector:
     def __repr__(self):
         return f"BitVector({str(self)}, {self.num_bits})"
 
-    # @no_x
+    @no_x
     def __setitem__(self, index, value):
         if isinstance(index, slice):
             raise NotImplementedError()
@@ -127,7 +150,7 @@ class BitVector:
                 raise ValueError("Second argument __setitem__ on a single BitVector index should be a boolean or 0 or 1, not {value}".format(value=value))
             self._bits[index] = value
 
-    # @no_x
+    @no_x
     def __getitem__(self, index):
         if isinstance(index, slice):
             return BitVector(self._bits[index])
@@ -201,54 +224,52 @@ class BitVector:
         other = (len(self) - other.as_uint()) % len(self)
         return self.concat( self[other:], self[0:other] )
 
-    @binary
+    @binary_no_cast
     def bvcomp(self, other):
-        return BitVector(self.as_uint() == other.as_uint(), num_bits=1)
+        if isinstance(other, list):
+            other = BitVector(list)
+
         #if self.is_x() and isinstance(other, BitVector) or \
         #        isinstance(other, list) and \
         #        all(isinstance(x, bool) for x in other):
-        #    return True
-        #elif isinstance(other, BitVector):
-        #    return BitVector(self._value == other._value, num_bits=1)
+        #    result = True
         #elif isinstance(other, list) and all(isinstance(x, bool) for x in other):
-        #    return self.as_bool_list() == other
+        #    result = self.as_bool_list() == other
         #elif isinstance(other, bool) and self.num_bits == 1:
-        #    return self.as_bool_list()[0] == other
-        #elif isinstance(other, int):
-        #    return self.as_sint() == other
-        #raise NotImplementedError(type(other))
+        #    result = self.as_bool_list()[0] == other
+        return BitVector( self._value == other._value, 1 )
 
     bveq = bvcomp
 
-    @binary
+    @binary_no_cast
     def bvne(self, other):
         return BitVector(self.as_uint() != other.as_uint(), num_bits=1)
 
-    @binary
+    @binary_no_cast
     def bvult(self, other):
         return BitVector(self.as_uint() < other.as_uint(), num_bits=1)
 
-    @binary
+    @binary_no_cast
     def bvule(self, other):
         return BitVector(self.as_uint() <= other.as_uint(), num_bits=1)
 
-    @binary
+    @binary_no_cast
     def bvugt(self, other):
         return BitVector(self.as_uint() > other.as_uint(), num_bits=1)
 
-    @binary
+    @binary_no_cast
     def bvuge(self, other):
         return BitVector(self.as_uint() >= other.as_uint(), num_bits=1)
 
-    @binary
+    @binary_no_cast
     def bvslt(self, other):
         return BitVector(self.as_sint() < other.as_sint(), num_bits=1)
 
-    @binary
+    @binary_no_cast
     def bvsle(self, other):
         return BitVector(self.as_sint() <= other.as_sint(), num_bits=1)
 
-    @binary
+    @binary_no_cast
     def bvsgt(self, other):
         return BitVector(self.as_sint() > other.as_sint(), num_bits=1)
 
@@ -325,19 +346,10 @@ class BitVector:
 
     __eq__ = bveq
     __ne__ = bvne
-
-    def __ge__(self, other):
-        return BitVector(self.bvuge(other))
-
-    def __gt__(self, other):
-        return BitVector(self.bvugt(other))
-
-    def __lt__(self, other):
-        return BitVector(self.bvult(other))
-
-    def __le__(self, other):
-        return BitVector(self.bvule(other))
-
+    __ge__ = bvuge
+    __gt__ = bvugt
+    __le__ = bvule
+    __lt__ = bvult
 
     def is_x(self):
         return self._value is None
@@ -434,16 +446,16 @@ class SIntVector(NumVector):
         return self.bvsrem(other)
 
     def __ge__(self, other):
-        return BitVector(self.bvsge(other))
+        return self.bvsge(other)
 
     def __gt__(self, other):
-        return BitVector(self.bvsgt(other))
+        return self.bvsgt(other)
 
     def __lt__(self, other):
-        return BitVector(self.bvslt(other))
+        return self.bvslt(other)
 
     def __le__(self, other):
-        return BitVector(self.bvsle(other))
+        return self.bvsle(other)
 
 
     @staticmethod
