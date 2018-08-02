@@ -89,10 +89,10 @@ def binary(fn):
     return wrapped
 
 def no_x(fn):
-    def wrapped(self):
+    def wrapped(self, *args, **kwargs):
         if self._value is None:
             raise Exception("Invalid use of X value")
-        return fn(self)
+        return fn(self, *args, **kwargs)
 
     return wrapped
 
