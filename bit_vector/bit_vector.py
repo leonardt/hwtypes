@@ -404,6 +404,10 @@ class BitVector:
         return self.concat(BitVector(other.as_uint() * [self[-1]]), self)
 
     @binary
+    def ext(self, other):
+        return self.zext(other)
+
+    @binary
     def zext(self, other):
         return self.concat(BitVector(other.as_uint() * [0]), self)
 
@@ -462,4 +466,8 @@ class SIntVector(NumVector):
     def random(width):
         w = width - 1
         return SIntVector(random.randint(-(1 << w), (1 << w) - 1), width)
+
+    @binary
+    def ext(self, other):
+        return self.sext(other)
 
