@@ -401,11 +401,11 @@ class BitVector:
 
     @binary
     def sext(self, other):
-        return self.concat(other.as_uint() * [self[-1]], self)
+        return self.concat(BitVector(other.as_uint() * [self[-1]]), self)
 
     @binary
     def zext(self, other):
-        return self.concat(other.as_uint() * [0], self)
+        return self.concat(BitVector(other.as_uint() * [0]), self)
 
     @staticmethod
     def random(width):
