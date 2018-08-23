@@ -130,7 +130,7 @@ class BitVector:
 
 
     def __hash__(self):
-        return self._value
+        return repr(self)
 
     def __str__(self):
         if self._value is None:
@@ -139,7 +139,7 @@ class BitVector:
             return str(int(self))
 
     def __repr__(self):
-        return f"BitVector({str(self)}, {self.num_bits})"
+        return f"BitVector({self._value}, {self.num_bits})"
 
     @no_x
     def __setitem__(self, index, value):
@@ -419,12 +419,13 @@ class BitVector:
 
 
 class NumVector(BitVector):
-    pass
+    __hash__ = BitVector.__hash__
 
 class UIntVector(NumVector):
+    __hash__ = NumVector.__hash__
 
     def __repr__(self):
-        return f"UIntVector({str(self)}, {self.num_bits})"
+        return f"UIntVector({self._value}, {self.num_bits})"
 
     @staticmethod
     def random(width):
@@ -433,9 +434,10 @@ class UIntVector(NumVector):
 
 
 class SIntVector(NumVector):
+    __hash__ = NumVector.__hash__
 
     def __repr__(self):
-        return f"SIntVector({str(self)}, {self.num_bits})"
+        return f"SIntVector({self._value}, {self.num_bits})"
 
     def __int__(self):
         return self.as_sint()
