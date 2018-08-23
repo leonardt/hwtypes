@@ -130,7 +130,7 @@ class BitVector:
 
 
     def __hash__(self):
-        return repr(self)
+        return hash(repr(self))
 
     def __str__(self):
         if self._value is None:
