@@ -139,7 +139,7 @@ class BitVector:
             return str(int(self))
 
     def __repr__(self):
-        return f"BitVector({self._value}, {self.num_bits})"
+        return "BitVector({value}, {num_bits})".format(value=self._value, num_bits=self.num_bits)
 
     @no_x
     def __setitem__(self, index, value):
@@ -425,7 +425,7 @@ class UIntVector(NumVector):
     __hash__ = NumVector.__hash__
 
     def __repr__(self):
-        return f"UIntVector({self._value}, {self.num_bits})"
+        return "UIntVector({value}, {num_bits})".format(value=self._value, num_bits=self.num_bits)
 
     @staticmethod
     def random(width):
@@ -437,7 +437,7 @@ class SIntVector(NumVector):
     __hash__ = NumVector.__hash__
 
     def __repr__(self):
-        return f"SIntVector({self._value}, {self.num_bits})"
+        return "SIntVector({value}, {num_bits})".format(value=self._value, num_bits=self.num_bits)
 
     def __int__(self):
         return self.as_sint()
