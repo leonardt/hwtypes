@@ -52,3 +52,13 @@ def test_eq():
     assert [[BitVector(1,4)]] == [[BitVector(1,4)]]
 
     assert BitVector(None,1) == BitVector(None,1) 
+
+def test_setitem():
+  bv = BitVector(5)
+  assert bv.as_uint() ==5
+  bv[0] = 0
+  assert repr(bv) == 'BitVector(4, 3)'
+  bv[1] = 1
+  assert repr(bv) == 'BitVector(6, 3)'
+  bv[2] = 0
+  assert repr(bv) == 'BitVector(2, 3)'
