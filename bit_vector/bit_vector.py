@@ -149,6 +149,7 @@ class BitVector:
             if not (isinstance(value, bool) or isinstance(value, int) and value in {0, 1}):
                 raise ValueError("Second argument __setitem__ on a single BitVector index should be a boolean or 0 or 1, not {value}".format(value=value))
             self._bits[index] = value
+            self._value = seq2int(self._bits)
 
     @no_x
     def __getitem__(self, index):
