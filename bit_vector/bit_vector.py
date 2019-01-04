@@ -124,6 +124,7 @@ class BitVector:
         else:
             raise Exception("BitVector initialization with type {} not supported".format(type(value)))
 
+        #print('BV',num_bits)
         self.num_bits = num_bits
         if self._value is not None and self._value.bit_length() > self.num_bits:
             raise Exception("BitVector initialized with too small a width")
@@ -164,9 +165,7 @@ class BitVector:
     # Note: In concat(x, y), the MSB of the result is the MSB of x.
     @staticmethod
     def concat(x, y):
-        bits = y.bits()
-        bits.extend(x.bits())
-        return BitVector(bits)
+        return BitVector(y.bits() + x.bits())
 
     @unary
     def bvnot(self):
@@ -285,6 +284,17 @@ class BitVector:
         else:
             return BitVector(~self.as_uint()+1, num_bits=self.num_bits)
 
+    # add with carry, returns result and carry
+    #   no type checks yet
+    def adc(a, b, c):
+        n = a.num_bits
+        a = a.zext(1)
+        b = b.zext(1)
+        n = n + 1 - c.num_bits
+        c = c.zext(n)
+        res = a + b + c
+        return res[0:-1], BitVector(res[-1],1)
+
     @binary
     def bvadd(self, other):
         return BitVector(self.as_uint() + other.as_uint(), num_bits=self.num_bits)
@@ -400,17 +410,17 @@ class BitVector:
     def repeat(self, other):
         return BitVector( other.as_uint() * self.bits() )
 
-    @binary
+    @binary_no_cast
     def sext(self, other):
         return self.concat(BitVector(other.as_uint() * [self[-1]]), self)
 
-    @binary
+    @binary_no_cast
     def ext(self, other):
         return self.zext(other)
 
-    @binary
+    @binary_no_cast
     def zext(self, other):
-        return self.concat(BitVector(other.as_uint() * [0]), self)
+        return BitVector.concat(BitVector(other.as_uint() * [0]), self)
 
     @staticmethod
     def random(width):
@@ -473,4 +483,10 @@ class SIntVector(NumVector):
     @binary
     def ext(self, other):
         return self.sext(other)
+
+def overflow(a, b, res):
+    msba = BitVector(a[-1],1)
+    msbb = BitVector(b[-1],1)
+    N = BitVector(res[-1],1)
+    return (msba & msbb & ~N) or (~msba & ~msbb & N)
 
