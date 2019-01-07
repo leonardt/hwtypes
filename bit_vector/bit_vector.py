@@ -283,12 +283,18 @@ class BitVector:
         else:
             return BitVector(~self.as_uint()+1, num_bits=self.num_bits)
 
-    # add with carry, returns result and carry
-    #   no type checks yet
     def adc(a, b, c):
+        """
+        add with carry
+
+        returns a two element tuple of the form (result, carry)
+
+        no type checks yet
+        """
         n = a.num_bits
         a = a.zext(1)
         b = b.zext(1)
+        # Extend c by the difference between c's current bit length and n + 1
         n = n + 1 - c.num_bits
         c = c.zext(n)
         res = a + b + c
