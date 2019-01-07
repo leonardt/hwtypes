@@ -490,8 +490,8 @@ class SIntVector(NumVector):
         return self.sext(other)
 
 def overflow(a, b, res):
-    msba = BitVector(a[-1],1)
-    msbb = BitVector(b[-1],1)
-    N = BitVector(res[-1],1)
-    return (msba & msbb & ~N) or (~msba & ~msbb & N)
+    msb_a = BitVector(a[-1], 1)
+    msb_b = BitVector(b[-1], 1)
+    N = BitVector(res[-1], 1)
+    return (msb_a & msb_b & ~N) or (~msb_a & ~msb_b & N)
 
