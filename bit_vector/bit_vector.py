@@ -124,7 +124,6 @@ class BitVector:
         else:
             raise Exception("BitVector initialization with type {} not supported".format(type(value)))
 
-        #print('BV',num_bits)
         self.num_bits = num_bits
         if self._value is not None and self._value.bit_length() > self.num_bits:
             raise Exception("BitVector initialized with too small a width")
