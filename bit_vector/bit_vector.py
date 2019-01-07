@@ -292,7 +292,7 @@ class BitVector:
         n = n + 1 - c.num_bits
         c = c.zext(n)
         res = a + b + c
-        return res[0:-1], BitVector(res[-1],1)
+        return res[0:-1], BitVector(res[-1], 1)
 
     @binary
     def bvadd(self, other):
