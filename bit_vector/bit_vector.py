@@ -164,9 +164,7 @@ class BitVector:
     # Note: In concat(x, y), the MSB of the result is the MSB of x.
     @staticmethod
     def concat(x, y):
-        bits = y.bits()
-        bits.extend(x.bits())
-        return BitVector(bits)
+        return BitVector(y.bits() + x.bits())
 
     @unary
     def bvnot(self):
@@ -284,6 +282,23 @@ class BitVector:
             return BitVector(None, num_bits=self.num_bits)
         else:
             return BitVector(~self.as_uint()+1, num_bits=self.num_bits)
+
+    def adc(a, b, c):
+        """
+        add with carry
+
+        returns a two element tuple of the form (result, carry)
+
+        no type checks yet
+        """
+        n = a.num_bits
+        a = a.zext(1)
+        b = b.zext(1)
+        # Extend c by the difference between c's current bit length and n + 1
+        n = n + 1 - c.num_bits
+        c = c.zext(n)
+        res = a + b + c
+        return res[0:-1], BitVector(res[-1], 1)
 
     @binary
     def bvadd(self, other):
@@ -410,7 +425,7 @@ class BitVector:
 
     @binary
     def zext(self, other):
-        return self.concat(BitVector(other.as_uint() * [0]), self)
+        return BitVector.concat(BitVector(other.as_uint() * [0]), self)
 
     @staticmethod
     def random(width):
@@ -473,4 +488,10 @@ class SIntVector(NumVector):
     @binary
     def ext(self, other):
         return self.sext(other)
+
+def overflow(a, b, res):
+    msb_a = BitVector(a[-1], 1)
+    msb_b = BitVector(b[-1], 1)
+    N = BitVector(res[-1], 1)
+    return (msb_a & msb_b & ~N) or (~msb_a & ~msb_b & N)
 
