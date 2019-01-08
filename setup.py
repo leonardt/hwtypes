@@ -16,7 +16,7 @@ setup(
     url='https://github.com/leonardt/bit_vector',
     author='Leonard Truong',
     author_email='lenny@cs.stanford.edu',
-    version='0.39-alpha',
+    version='0.40-alpha',
     description='A BitVector class for Python',
     scripts=[],
     packages=[
