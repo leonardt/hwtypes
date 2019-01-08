@@ -39,6 +39,9 @@ def test_operator_int1(op, reference, width):
 def test_operator_int2(op, reference, width):
     for _ in range(NTESTS):
         I0, I1 = SIntVector.random(width), SIntVector.random(width)
+        if op is operator.floordiv and I1 == 0:
+            # Skip divide by zero
+            continue
         expected = signed(reference(int(I0), int(I1)), width)
         assert expected == int(op(I0, I1))
 
