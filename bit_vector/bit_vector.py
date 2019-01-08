@@ -415,16 +415,39 @@ class BitVector:
     def repeat(self, other):
         return BitVector( other.as_uint() * self.bits() )
 
-    @binary
+    @binary_no_cast
     def sext(self, other):
+        """
+        **NOTE:** Does not cast, returns a raw BitVector instead.
+
+        The user is responsible for handling the conversion. This behavior was
+        chosen due to issues with subclassing BitVector (e.g. Bits(n) type
+        generator which specializes num_bits). Basically, it's not guaranteed
+        that a subtype will respect the __init__ interface, so we return a raw
+        BitVector instead and require the user to correctly convert back to the
+        subtype.
+
+        Subtypes can improve ergonomics by implementing their own extension
+        operators which handle the implicit conversion from raw BitVector.
+
+        TODO: Do this implicit conversion for built-in types like UIntVector.
+        """
         return self.concat(BitVector(other.as_uint() * [self[-1]]), self)
 
-    @binary
+    @binary_no_cast
     def ext(self, other):
+        """
+        **NOTE:** Does not cast, returns a raw BitVector instead.  See
+        docstring for `sext` for more info.
+        """
         return self.zext(other)
 
-    @binary
+    @binary_no_cast
     def zext(self, other):
+        """
+        **NOTE:** Does not cast, returns a raw BitVector instead.  See
+        docstring for `sext` for more info.
+        """
         return BitVector.concat(BitVector(other.as_uint() * [0]), self)
 
     @staticmethod
