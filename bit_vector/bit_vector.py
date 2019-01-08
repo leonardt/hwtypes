@@ -415,15 +415,15 @@ class BitVector:
     def repeat(self, other):
         return BitVector( other.as_uint() * self.bits() )
 
-    @binary_no_cast
+    @binary
     def sext(self, other):
         return self.concat(BitVector(other.as_uint() * [self[-1]]), self)
 
-    @binary_no_cast
+    @binary
     def ext(self, other):
         return self.zext(other)
 
-    @binary_no_cast
+    @binary
     def zext(self, other):
         return BitVector.concat(BitVector(other.as_uint() * [0]), self)
 

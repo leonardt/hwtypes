@@ -6,7 +6,7 @@ import pytest
 adc_params = []
 
 for i in range(0, 32):
-    n = random.randint(0, 32)
+    n = random.randint(1, 32)
     a = BV(random.randint(0, (1 << n) - 1), n)
     b = BV(random.randint(0, (1 << n) - 1), n)
     c = BV(random.randint(0, 1), 1)
