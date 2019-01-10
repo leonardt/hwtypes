@@ -1,4 +1,5 @@
 from .compatibility import IntegerTypes, StringTypes
+import functools
 import random
 
 #
@@ -31,6 +32,7 @@ def int2seq(i, n=0):
 
 
 def unary(fn):
+    @functools.wraps(fn)
     def wrapped(self):
         # cast type
         T = type(self)
@@ -40,6 +42,7 @@ def unary(fn):
     return wrapped
 
 def binary_no_cast(fn):
+    @functools.wraps(fn)
     def wrapped(self, other):
         # promote bool and int
         if isinstance(other, (int, bool)):
@@ -63,6 +66,7 @@ def binary_no_cast(fn):
     return wrapped
 
 def binary(fn):
+    @functools.wraps(fn)
     def wrapped(self, other):
         # promote bool and int
         if isinstance(other, (int, bool)):
@@ -89,6 +93,7 @@ def binary(fn):
     return wrapped
 
 def no_x(fn):
+    @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
         if self._value is None:
             raise Exception("Invalid use of X value")
