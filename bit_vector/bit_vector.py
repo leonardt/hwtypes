@@ -231,7 +231,7 @@ class BitVector:
     @binary_no_cast
     def bvcomp(self, other):
         if isinstance(other, list):
-            other = BitVector(list)
+            other = BitVector(other)
 
         #if self.is_x() and isinstance(other, BitVector) or \
         #        isinstance(other, list) and \
