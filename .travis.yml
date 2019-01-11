@@ -9,8 +9,7 @@ install:
 jobs:
   include:
   - stage: test
-    script:
-    - py.test --cov=bit_vector tests/
+    script: py.test --cov=bit_vector tests/
   - stage: deploy
     script: skip
     deploy: &pypi
