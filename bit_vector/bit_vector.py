@@ -1,3 +1,4 @@
+from .bit_vector_abc import BitVectorABC
 from .compatibility import IntegerTypes, StringTypes
 import functools
 import random
@@ -101,7 +102,7 @@ def no_x(fn):
 
     return wrapped
 
-class BitVector:
+class BitVector(BitVectorABC):
     def __init__(self, value=0, num_bits=None):
         if isinstance(value, BitVector):
             if num_bits is None:
@@ -132,6 +133,11 @@ class BitVector:
         self.num_bits = num_bits
         if self._value is not None and self._value.bit_length() > self.num_bits:
             raise Exception("BitVector initialized with too small a width")
+
+    def make_constant(self, value, num_bits=None):
+        if num_bits is None:
+            num_bits = self.num_bits
+        return BitVector(value, num_bits)
 
 
     def __hash__(self):
@@ -167,9 +173,9 @@ class BitVector:
         return self.num_bits
 
     # Note: In concat(x, y), the MSB of the result is the MSB of x.
-    @staticmethod
-    def concat(x, y):
-        return BitVector(y.bits() + x.bits())
+    @classmethod
+    def concat(cls, x, y):
+        return cls(y.bits() + x.bits())
 
     @unary
     def bvnot(self):
@@ -182,29 +188,15 @@ class BitVector:
     def bvand(self, other):
         return BitVector(self.as_uint() & other.as_uint(), num_bits=self.num_bits)
 
-    @binary
-    def bvnand(self, other):
-        return not self.bvand(other)
-
 
     @binary
     def bvor(self, other):
         return BitVector(self.as_uint() | other.as_uint(), num_bits=self.num_bits)
 
-    @binary
-    def bvnor(self, other):
-        return not self.bvor(other)
-
 
     @binary
     def bvxor(self, other):
         return BitVector(self.as_uint() ^ other.as_uint(), num_bits=self.num_bits)
-
-    @binary
-    def bvxnor(self, other):
-        return not self.bvxor(other)
-
-
 
     @binary
     def bvshl(self, other):
@@ -243,43 +235,13 @@ class BitVector:
         #    result = self.as_bool_list()[0] == other
         return BitVector( self._value == other._value, 1 )
 
-    bveq = bvcomp
-
-    @binary_no_cast
-    def bvne(self, other):
-        return BitVector(self.as_uint() != other.as_uint(), num_bits=1)
-
     @binary_no_cast
     def bvult(self, other):
         return BitVector(self.as_uint() < other.as_uint(), num_bits=1)
 
     @binary_no_cast
-    def bvule(self, other):
-        return BitVector(self.as_uint() <= other.as_uint(), num_bits=1)
-
-    @binary_no_cast
-    def bvugt(self, other):
-        return BitVector(self.as_uint() > other.as_uint(), num_bits=1)
-
-    @binary_no_cast
-    def bvuge(self, other):
-        return BitVector(self.as_uint() >= other.as_uint(), num_bits=1)
-
-    @binary_no_cast
     def bvslt(self, other):
         return BitVector(self.as_sint() < other.as_sint(), num_bits=1)
-
-    @binary_no_cast
-    def bvsle(self, other):
-        return BitVector(self.as_sint() <= other.as_sint(), num_bits=1)
-
-    @binary_no_cast
-    def bvsgt(self, other):
-        return BitVector(self.as_sint() > other.as_sint(), num_bits=1)
-
-    @binary
-    def bvsge(self, other):
-        return BitVector(self.as_sint() >= other.as_sint(), num_bits=1)
 
     @unary
     def bvneg(self):
@@ -308,9 +270,6 @@ class BitVector:
     @binary
     def bvadd(self, other):
         return BitVector(self.as_uint() + other.as_uint(), num_bits=self.num_bits)
-    @binary
-    def bvsub(self, other):
-        return self.bvadd(other.bvneg())
 
     @binary
     def bvmul(self, other):
@@ -347,30 +306,27 @@ class BitVector:
         return BitVector(selfsas_sint() % other, num_bits=self.num_bits)
 
     # bvsmod
+    def __invert__(self): return self.bvnot()
+    def __and__(self, other): return self.bvand(other)
+    def __or__(self, other): return self.bvor(other)
+    def __xor__(self, other): return self.bvxor(other)
 
+    def __lshift__(self, other): return self.bvshl(other)
+    def __rshift__(self, other): return self.bvlshr(other)
 
+    def __neg__(self): return self.bvneg()
+    def __add__(self, other): return self.bvadd(other)
+    def __sub__(self, other): return self.bvsub(other)
+    def __mul__(self, other): return self.bvmul(other)
+    def __floordiv__(self, other): return self.bvudiv(other)
+    def __mod__(self, other): return self.bvurem(other)
 
-    __invert__ = bvnot
-    __and__ = bvand
-    __or__ = bvor
-    __xor__ = bvxor
-
-    __lshift__ = bvshl
-    __rshift__ = bvlshr
-
-    __neg__ = bvneg
-    __add__ = bvadd
-    __sub__ = bvsub
-    __mul__ = bvmul
-    __floordiv__ = bvudiv
-    __mod__ = bvurem
-
-    __eq__ = bveq
-    __ne__ = bvne
-    __ge__ = bvuge
-    __gt__ = bvugt
-    __le__ = bvule
-    __lt__ = bvult
+    def __eq__(self, other): return self.bveq(other)
+    def __ne__(self, other): return self.bvne(other)
+    def __ge__(self, other): return self.bvuge(other)
+    def __gt__(self, other): return self.bvugt(other)
+    def __le__(self, other): return self.bvule(other)
+    def __lt__(self, other): return self.bvult(other)
 
     def is_x(self):
         return self._value is None
@@ -412,9 +368,6 @@ class BitVector:
     @no_x
     def as_bool_list(self):
         return [bool(x) for x in self._bits]
-
-
-
 
     @binary
     def repeat(self, other):
