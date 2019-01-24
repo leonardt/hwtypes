@@ -305,6 +305,9 @@ class BitVector:
         res = a + b + c
         return res[0:-1], BitVector(res[-1], 1)
 
+    def ite(i,t,e):
+        return t if i.as_uint() else e
+
     @binary
     def bvadd(self, other):
         return BitVector(self.as_uint() + other.as_uint(), num_bits=self.num_bits)
