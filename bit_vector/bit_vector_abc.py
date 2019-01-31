@@ -115,6 +115,10 @@ class BitVectorABC(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def ite(i,t,e):
+        pass
+
+    @abstractmethod
     def bvadd(self, other):
         pass
 
