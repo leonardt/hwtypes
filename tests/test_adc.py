@@ -18,3 +18,11 @@ def test_adc(a, b, c):
     res, carry = a.adc(b, c)
     assert res == a + b + c
     assert carry == (a.zext(1) + b.zext(1) + c)[-1]
+
+def test_adc1():
+    a = BV(27734,num_bits=16)
+    b = BV(13207,num_bits=16)
+    c = BV(0,num_bits=1)
+    res, carry = a.adc(b, c)
+    assert res == a + b + c
+    assert carry == (a.zext(1) + b.zext(1) + c)[-1]
