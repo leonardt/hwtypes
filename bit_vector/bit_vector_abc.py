@@ -22,7 +22,7 @@ class AbstractBitVectorMeta(ABCMeta):
         else:
             bases = (cls, AbstractBitVector[idx])
 
-        class_name = f'{cls.__name__}[{idx}]'
+        class_name = '{}[{}]'.format(cls.__name__, idx)
         def size(self):
             return idx
         t = type(cls)(class_name, bases, {'_size' : size})
