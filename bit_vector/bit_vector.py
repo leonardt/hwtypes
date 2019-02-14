@@ -38,26 +38,27 @@ def unary(fn):
         # cast type
         T = type(self)
         val =  fn(self)
-        return val if val.num_bits == 1 else T(val)
+        return val if val.size == 1 else T(val)
 
     return wrapped
 
 def binary_no_cast(fn):
     @functools.wraps(fn)
     def wrapped(self, other):
+        T = type(self)
+
         # promote bool and int
         if isinstance(other, (int, bool)):
-            other = BitVector(other, self.num_bits)
+            other = T(other)
 
         # type check
-        if not (isinstance(other, BitVector) or isinstance(other, int) and other.bit_length() <= self.num_bits):
+        if not (isinstance(other, BitVector) or isinstance(other, int) and other.bit_length() <= self.size):
             raise TypeError(fn, other)
 
         # handle binary x
         if isinstance(other, BitVector):
             if self._value is None and other._value is None:
-                #return BitVector(None, num_bits=self.num_bits)
-                return BitVector(1, num_bits=self.num_bits)
+                return T(1)
             elif self._value is None or other._value is None:
                 raise Exception("Invalid use of X value")
         elif self._value is None:
@@ -69,18 +70,19 @@ def binary_no_cast(fn):
 def binary(fn):
     @functools.wraps(fn)
     def wrapped(self, other):
+        T = type(self)
         # promote bool and int
         if isinstance(other, (int, bool)):
-            other = BitVector(other, self.num_bits)
+            other = T(other)
 
         # type check
-        if not (isinstance(other, BitVector) or isinstance(other, int) and other.bit_length() <= self.num_bits):
+        if not (isinstance(other, BitVector) or isinstance(other, int) and other.bit_length() <= self.size):
             raise TypeError(fn, other)
 
         # handle binary x
         if isinstance(other, BitVector):
             if self._value is None and other._value is None:
-                return BitVector(None, num_bits=self.num_bits)
+                return T(None)
             elif self._value is None or other._value is None:
                 raise Exception("Invalid use of X value")
         elif self._value is None:
@@ -89,7 +91,7 @@ def binary(fn):
         # cast type
         T = type(self)
         val =  fn(self, other)
-        return val if val.num_bits == 1 else T(val)
+        return val if val.size == 1 else T(val)
 
     return wrapped
 
@@ -103,41 +105,32 @@ def no_x(fn):
     return wrapped
 
 class BitVector(AbstractBitVector):
-    def __init__(self, value=0, num_bits=None):
+    def __init__(self, value=0):
         if isinstance(value, BitVector):
-            if num_bits is None:
-                num_bits = value.num_bits
             self._value = value._value
-            self._bits = int2seq(self._value, num_bits)
+            self._bits = int2seq(self._value, self.size)
         elif isinstance(value, IntegerTypes):
-            if num_bits is None:
-                num_bits = max(value.bit_length(), 1)
             self._value = value
-            self._value &= (1 << num_bits)-1
-            self._bits = int2seq(value, num_bits)
+            self._value &= (1 << self.size)-1
+            self._bits = int2seq(value, self.size)
         elif isinstance(value, list):
             if not (all(x == 0 or x == 1 for x in value) or all(x == False or x == True for x in value)):
                 raise Exception("BitVector list initialization must be a list of 0s and 1s or a list of True and False")
-            if num_bits is None:
-                num_bits = len(value)
             self._value = seq2int(value)
             self._bits = value
         elif value is None:
-            if num_bits is None:
-                raise Exception("X valued BitVector requires an explicit width")
             self._value = None
             self._bits = None
         else:
             raise Exception("BitVector initialization with type {} not supported".format(type(value)))
 
-        self.num_bits = num_bits
-        if self._value is not None and self._value.bit_length() > self.num_bits:
+        if self._value is not None and self._value.bit_length() > self.size:
             raise Exception("BitVector initialized with too small a width")
 
-    def make_constant(self, value, num_bits=None):
-        if num_bits is None:
-            num_bits = self.num_bits
-        return BitVector(value, num_bits)
+    def make_constant(self, value, size=None):
+        if size is None:
+            size = self.size
+        return type(self)[size](value)
 
 
     def __hash__(self):
@@ -150,7 +143,7 @@ class BitVector(AbstractBitVector):
             return str(int(self))
 
     def __repr__(self):
-        return "BitVector({value}, {num_bits})".format(value=self._value, num_bits=self.num_bits)
+        return "BitVector[{size}]({value})".format(value=self._value, size=self.size)
 
     @no_x
     def __setitem__(self, index, value):
@@ -165,50 +158,55 @@ class BitVector(AbstractBitVector):
     @no_x
     def __getitem__(self, index):
         if isinstance(index, slice):
-            return BitVector(self._bits[index])
+            v = self._bits[index]
+            return BitVector[len(v)](v)
         else:
-            return BitVector(self.bits()[index], 1)
+            return BitVector[1](self.bits()[index])
+
+    @property
+    def num_bits(self):
+        return self.size
 
     def __len__(self):
-        return self.num_bits
+        return self.size
 
     # Note: In concat(x, y), the MSB of the result is the MSB of x.
     @classmethod
     def concat(cls, x, y):
-        return cls(y.bits() + x.bits())
+        return BitVector[x.size+y.size](y.bits() + x.bits())
 
     @unary
     def bvnot(self):
         if self._value is None:
-            return BitVector(None, num_bits=self.num_bits)
+            return type(self)(None)
         else:
-            return BitVector(~self.as_uint(), num_bits=self.num_bits)
+            return type(self)(~self.as_uint())
 
     @binary
     def bvand(self, other):
-        return BitVector(self.as_uint() & other.as_uint(), num_bits=self.num_bits)
+        return type(self)(self.as_uint() & other.as_uint())
 
 
     @binary
     def bvor(self, other):
-        return BitVector(self.as_uint() | other.as_uint(), num_bits=self.num_bits)
+        return type(self)(self.as_uint() | other.as_uint())
 
 
     @binary
     def bvxor(self, other):
-        return BitVector(self.as_uint() ^ other.as_uint(), num_bits=self.num_bits)
+        return type(self)(self.as_uint() ^ other.as_uint())
 
     @binary
     def bvshl(self, other):
-        return BitVector( self.as_uint() << other.as_uint(), num_bits=self.num_bits)
+        return type(self)( self.as_uint() << other.as_uint())
 
     @binary
     def bvlshr(self, other):
-        return BitVector( self.as_uint() >> other.as_uint(), num_bits=self.num_bits)
+        return type(self)( self.as_uint() >> other.as_uint())
 
     @binary
     def bvashr(self, other):
-        return BitVector( self.as_sint() >> other.as_uint(), num_bits=self.num_bits)
+        return type(self)( self.as_sint() >> other.as_uint())
 
     @binary
     def bvrol(self, other):
@@ -231,24 +229,24 @@ class BitVector(AbstractBitVector):
         #    result = True
         #elif isinstance(other, list) and all(isinstance(x, bool) for x in other):
         #    result = self.as_bool_list() == other
-        #elif isinstance(other, bool) and self.num_bits == 1:
+        #elif isinstance(other, bool) and self.size == 1:
         #    result = self.as_bool_list()[0] == other
-        return BitVector( self._value == other._value, 1 )
+        return BitVector[1](self._value == other._value)
 
     @binary_no_cast
     def bvult(self, other):
-        return BitVector(self.as_uint() < other.as_uint(), num_bits=1)
+        return BitVector[1](self.as_uint() < other.as_uint())
 
     @binary_no_cast
     def bvslt(self, other):
-        return BitVector(self.as_sint() < other.as_sint(), num_bits=1)
+        return BitVector[1](self.as_sint() < other.as_sint())
 
     @unary
     def bvneg(self):
         if self._value is None:
-            return BitVector(None, num_bits=self.num_bits)
+            return type(self)(None)
         else:
-            return BitVector(~self.as_uint()+1, num_bits=self.num_bits)
+            return type(self)(~self.as_uint()+1)
 
     def adc(a, b, c):
         """
@@ -258,39 +256,39 @@ class BitVector(AbstractBitVector):
 
         no type checks yet
         """
-        n = a.num_bits
+        n = a.size
         a = a.zext(1)
         b = b.zext(1)
         # Extend c by the difference between c's current bit length and n + 1
-        n = n + 1 - c.num_bits
+        n = n + 1 - c.size
         c = c.zext(n)
         res = a + b + c
-        return res[0:-1], BitVector(res[-1], 1)
+        return res[0:-1], res[-1]
 
     def ite(i,t,e):
         return t if i.as_uint() else e
 
     @binary
     def bvadd(self, other):
-        return BitVector(self.as_uint() + other.as_uint(), num_bits=self.num_bits)
+        return type(self)(self.as_uint() + other.as_uint())
 
     @binary
     def bvmul(self, other):
-        return BitVector(self.as_uint() * other.as_uint(), num_bits=self.num_bits)
+        return type(self)(self.as_uint() * other.as_uint())
 
     @binary
     def bvudiv(self, other):
         other = other.as_uint()
         if other == 0:
-            return BitVector(1, num_bits=self.num_bits)
-        return BitVector(self.as_uint() // other, num_bits=self.num_bits)
+            return type(self)[1]
+        return type(self)(self.as_uint() // other)
 
     @binary
     def bvurem(self, other):
         other = other.as_uint()
         if other == 0:
             return self
-        return BitVector(self.as_uint() % other, num_bits=self.num_bits)
+        return type(self)(self.as_uint() % other)
 
     # bvumod
 
@@ -298,15 +296,15 @@ class BitVector(AbstractBitVector):
     def bvsdiv(self, other):
         other = other.as_sint()
         if other == 0:
-            return BitVector(1, num_bits=self.num_bits)
-        return BitVector(self.as_sint() // other, num_bits=self.num_bits)
+            return type(self)(1)
+        return type(self)(self.as_sint() // other)
 
     @binary
     def bvsrem(self, other):
         other = other.as_sint()
         if other == 0:
             return self
-        return BitVector(selfsas_sint() % other, num_bits=self.num_bits)
+        return type(self)(self.as_sint() % other)
 
     # bvsmod
     def __invert__(self): return self.bvnot()
@@ -341,8 +339,8 @@ class BitVector(AbstractBitVector):
     @no_x
     def as_sint(self):
         value = self._value
-        if (value & (1 << (self.num_bits - 1))):
-            value = value - (1 << self.num_bits)
+        if (value & (1 << (self.size - 1))):
+            value = value - (1 << self.size)
         return value
 
     as_int = as_sint
@@ -366,7 +364,7 @@ class BitVector(AbstractBitVector):
     #@property
     @no_x
     def bits(self):
-        return int2seq(self._value, self.num_bits)
+        return int2seq(self._value, self.size)
 
     @no_x
     def as_bool_list(self):
@@ -383,7 +381,7 @@ class BitVector(AbstractBitVector):
 
         The user is responsible for handling the conversion. This behavior was
         chosen due to issues with subclassing BitVector (e.g. Bits(n) type
-        generator which specializes num_bits). Basically, it's not guaranteed
+        generator which specializes size). Basically, it's not guaranteed
         that a subtype will respect the __init__ interface, so we return a raw
         BitVector instead and require the user to correctly convert back to the
         subtype.
@@ -393,7 +391,8 @@ class BitVector(AbstractBitVector):
 
         TODO: Do this implicit conversion for built-in types like UIntVector.
         """
-        return self.concat(BitVector(other.as_uint() * [self[-1]]), self)
+        ext = other.as_uint()
+        return self.concat(BitVector[ext](ext * [self[-1]]), self)
 
     @binary_no_cast
     def ext(self, other):
@@ -409,11 +408,11 @@ class BitVector(AbstractBitVector):
         **NOTE:** Does not cast, returns a raw BitVector instead.  See
         docstring for `sext` for more info.
         """
-        return BitVector.concat(BitVector(other.as_uint() * [0]), self)
+        return self.concat(BitVector[other.as_uint()](0), self)
 
     @staticmethod
     def random(width):
-        return BitVector(random.randint(0, (1 << width) - 1), width)
+        return BitVector[width](random.randint(0, (1 << width) - 1))
 
 
 
@@ -425,11 +424,11 @@ class UIntVector(NumVector):
     __hash__ = NumVector.__hash__
 
     def __repr__(self):
-        return "UIntVector({value}, {num_bits})".format(value=self._value, num_bits=self.num_bits)
+        return "UIntVector[{size}]({value})".format(value=self._value, size=self.size)
 
     @staticmethod
     def random(width):
-        return UIntVector(random.randint(0, (1 << width) - 1), width)
+        return UIntVector[width](random.randint(0, (1 << width) - 1))
 
 
 
@@ -437,7 +436,7 @@ class SIntVector(NumVector):
     __hash__ = NumVector.__hash__
 
     def __repr__(self):
-        return "SIntVector({value}, {num_bits})".format(value=self._value, num_bits=self.num_bits)
+        return "SIntVector[{size}]({value})".format(value=self._value, size=self.size)
 
     def __int__(self):
         return self.as_sint()
@@ -458,6 +457,7 @@ class SIntVector(NumVector):
         return self.bvsgt(other)
 
     def __lt__(self, other):
+
         return self.bvslt(other)
 
     def __le__(self, other):
@@ -467,15 +467,15 @@ class SIntVector(NumVector):
     @staticmethod
     def random(width):
         w = width - 1
-        return SIntVector(random.randint(-(1 << w), (1 << w) - 1), width)
+        return SIntVector[width](random.randint(-(1 << w), (1 << w) - 1))
 
     @binary
     def ext(self, other):
         return self.sext(other)
 
 def overflow(a, b, res):
-    msb_a = BitVector(a[-1], 1)
-    msb_b = BitVector(b[-1], 1)
-    N = BitVector(res[-1], 1)
+    msb_a = a[-1]
+    msb_b = b[-1]
+    N = res[-1]
     return (msb_a & msb_b & ~N) or (~msb_a & ~msb_b & N)
 

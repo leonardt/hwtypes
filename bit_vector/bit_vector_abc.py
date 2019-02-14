@@ -1,7 +1,59 @@
 from abc import ABCMeta, abstractmethod
 import typing as tp
+import weakref
 
-class AbstractBitVector(metaclass=ABCMeta):
+class AbstractBitVectorMeta(ABCMeta):
+    _class_cache = weakref.WeakValueDictionary()
+    def __getitem__(cls, idx : int) -> 'AbstractBitVector':
+        try:
+            return AbstractBitVector._class_cache[cls, idx]
+        except KeyError:
+            pass
+
+        if not isinstance(idx, int):
+            raise TypeError()
+
+        if not getattr(cls._size, '__isabstractmethod__', False):
+            raise TypeError('Cannot generate sized from sized')
+
+
+        if cls is AbstractBitVector:
+            bases = (cls,)
+        else:
+            bases = (cls, AbstractBitVector[idx])
+
+        class_name = f'{cls.__name__}[{idx}]'
+        def size(self):
+            return idx
+        t = type(cls)(class_name, bases, {'_size' : size})
+        t.__module__ = cls.__module__
+        AbstractBitVectorMeta._class_cache[cls, idx] = t
+        return t
+
+class AbstractBitVector(metaclass=AbstractBitVectorMeta):
+    def __new__(cls, value):
+        if not getattr(cls._size, '__isabstractmethod__', False) or not hasattr(value, '__int__'):
+            return super().__new__(cls)
+
+        size = int(value).bit_length()
+        return cls[size].__new__(cls[size], value)
+
+    @abstractmethod
+    def _size(self):
+        pass
+
+    @property
+    def size(self):
+        return self._size()
+
+    @abstractmethod
+    def __init__(self):
+        pass
+
+    @property
+    def size(self):
+        return self._size()
+
 
     @abstractmethod
     def make_constant(self, value, num_bits:tp.Optional[int]=None):

@@ -7,9 +7,9 @@ ite_params = []
 
 for i in range(0, 32):
     n = random.randint(1, 32)
-    a = BV(random.randint(0, (1 << n) - 1), n)
-    b = BV(random.randint(0, (1 << n) - 1), n)
-    c = BV(random.randint(0, 1), 1)
+    a = BV[n](random.randint(0, (1 << n) - 1))
+    b = BV[n](random.randint(0, (1 << n) - 1))
+    c = BV[1](random.randint(0, 1))
     ite_params.append((a, b, c))
 
 

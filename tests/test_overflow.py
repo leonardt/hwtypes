@@ -8,8 +8,8 @@ ovfl_params = []
 
 for i in range(0, 32):
     n = random.randint(1, 32)
-    a = SV(random.randint(-(1 << (n - 1)), (1 << (n - 1)) - 1), n)
-    b = SV(random.randint(-(1 << (n - 1)), (1 << (n - 1)) - 1), n)
+    a = SV[n](random.randint(-(1 << (n - 1)), (1 << (n - 1)) - 1))
+    b = SV[n](random.randint(-(1 << (n - 1)), (1 << (n - 1)) - 1))
     ovfl_params.append((a, b))
 
 

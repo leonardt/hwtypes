@@ -3,7 +3,7 @@ import operator
 from bit_vector import UIntVector
 
 def unsigned(value, width):
-    return UIntVector(value, width).as_uint()
+    return UIntVector[width](value).as_uint()
 
 NTESTS = 4
 WIDTHS = [8]
@@ -44,5 +44,5 @@ def test_operator_uint2(op, reference, width):
         assert expected == int(op(I0, I1))
 
 def test_unsigned():
-    a = UIntVector(4, 4)
+    a = UIntVector[4](4)
     assert int(a) == 4

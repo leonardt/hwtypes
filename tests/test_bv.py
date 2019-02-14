@@ -6,7 +6,7 @@ NTESTS = 4
 WIDTHS = [1,2,4,8]
 
 def unsigned(value, width):
-    return BitVector(value, width)
+    return BitVector[width](value)
 
 @pytest.mark.parametrize("op, reference", [
                               (operator.invert, lambda x: ~x),
@@ -35,7 +35,7 @@ def test_operator_bit2(op, reference, width):
         assert expected == int(op(I0, I1))
 
 def test_as():
-    bv = BitVector(1,4)
+    bv = BitVector[4](1)
     assert bv.as_sint() == 1
     assert bv.as_uint() == 1
     assert int(bv) == 1
@@ -43,22 +43,22 @@ def test_as():
     assert bv.bits() == [1,0,0,0]
     assert bv.as_binary_string()== '0b0001'
     assert str(bv) == '1'
-    assert repr(bv) == 'BitVector(1, 4)'
+    assert repr(bv) == 'BitVector[4](1)'
 
 def test_eq():
-    assert BitVector(1,4) == 1
-    assert BitVector(1,4) == BitVector(1,4)
-    assert [BitVector(1,4)] == [BitVector(1,4)]
-    assert [[BitVector(1,4)]] == [[BitVector(1,4)]]
+    assert BitVector[4](1) == 1
+    assert BitVector[4](1) == BitVector[4](1)
+    assert [BitVector[4](1)] == [BitVector[4](1)]
+    assert [[BitVector[4](1)]] == [[BitVector[4](1)]]
 
-    assert BitVector(None,1) == BitVector(None,1) 
+    assert BitVector[1](None) == BitVector[1](None)
 
 def test_setitem():
   bv = BitVector(5)
   assert bv.as_uint() ==5
   bv[0] = 0
-  assert repr(bv) == 'BitVector(4, 3)'
+  assert repr(bv) == 'BitVector[3](4)'
   bv[1] = 1
-  assert repr(bv) == 'BitVector(6, 3)'
+  assert repr(bv) == 'BitVector[3](6)'
   bv[2] = 0
-  assert repr(bv) == 'BitVector(2, 3)'
+  assert repr(bv) == 'BitVector[3](2)'

@@ -4,7 +4,7 @@ import random
 from bit_vector import UIntVector, SIntVector
 
 def signed(value, width):
-    return SIntVector(value, width).as_sint()
+    return SIntVector[width](value).as_sint()
 
 NTESTS = 4
 WIDTHS = [8]
@@ -57,8 +57,8 @@ def test_operator_int_shift(op, reference, width):
         assert expected == int(op(I0, I1))
 
 def test_signed():
-    a = SIntVector(4, 4)
+    a = SIntVector[4](4)
     assert int(a) == 4
-    a = SIntVector(-4, 4)
+    a = SIntVector[4](-4)
     assert a._value != 4, "Stored as unsigned two's complement value"
     assert int(a) == -4, "int returns the native signed int representation"
