@@ -1,4 +1,4 @@
-from .bit_vector_abc import BitVectorABC
+from .bit_vector_abc import AbstractBitVector
 from .compatibility import IntegerTypes, StringTypes
 import functools
 import random
@@ -102,7 +102,7 @@ def no_x(fn):
 
     return wrapped
 
-class BitVector(BitVectorABC):
+class BitVector(AbstractBitVector):
     def __init__(self, value=0, num_bits=None):
         if isinstance(value, BitVector):
             if num_bits is None:
@@ -167,7 +167,7 @@ class BitVector(BitVectorABC):
         if isinstance(index, slice):
             return BitVector(self._bits[index])
         else:
-            return self.bits()[index]
+            return BitVector(self.bits()[index], 1)
 
     def __len__(self):
         return self.num_bits

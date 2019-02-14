@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import typing as tp
 
-class BitVectorABC(metaclass=ABCMeta):
+class AbstractBitVector(metaclass=ABCMeta):
 
     @abstractmethod
     def make_constant(self, value, num_bits:tp.Optional[int]=None):
@@ -9,10 +9,6 @@ class BitVectorABC(metaclass=ABCMeta):
 
     @abstractmethod
     def __getitem__(self, index):
-        pass
-
-    @abstractmethod
-    def __setitem__(self, index, value):
         pass
 
     @abstractmethod
