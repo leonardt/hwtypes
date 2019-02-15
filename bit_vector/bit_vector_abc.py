@@ -18,12 +18,10 @@ class AbstractBitVectorMeta(ABCMeta):
         if not getattr(cls._size, '__isabstractmethod__', False):
             raise TypeError('Cannot generate sized from sized')
 
-
-        if cls is AbstractBitVector:
-            bases = (cls,)
-        else:
-            bases = (cls, AbstractBitVector[idx])
-
+        bases = [cls]
+        if cls is not AbstractBitVector:
+            bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, AbstractBitVectorMeta))
+        bases = tuple(bases)
         class_name = '{}[{}]'.format(cls.__name__, idx)
         def size(self):
             return idx
