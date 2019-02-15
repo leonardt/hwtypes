@@ -12,6 +12,8 @@ class AbstractBitVectorMeta(ABCMeta):
 
         if not isinstance(idx, int):
             raise TypeError()
+        if idx < 0:
+            raise ValueError('Size of BitVectors must be positive')
 
         if not getattr(cls._size, '__isabstractmethod__', False):
             raise TypeError('Cannot generate sized from sized')

@@ -280,14 +280,12 @@ class BitVector(AbstractBitVector):
     def bvudiv(self, other):
         other = other.as_uint()
         if other == 0:
-            return type(self)[1]
+            return type(self)((1 << self.size) - 1)
         return type(self)(self.as_uint() // other)
 
     @binary
     def bvurem(self, other):
         other = other.as_uint()
-        if other == 0:
-            return self
         return type(self)(self.as_uint() % other)
 
     # bvumod
@@ -296,14 +294,12 @@ class BitVector(AbstractBitVector):
     def bvsdiv(self, other):
         other = other.as_sint()
         if other == 0:
-            return type(self)(1)
+            return type(self)((1 << self.size) - 1)
         return type(self)(self.as_sint() // other)
 
     @binary
     def bvsrem(self, other):
         other = other.as_sint()
-        if other == 0:
-            return self
         return type(self)(self.as_sint() % other)
 
     # bvsmod
@@ -372,7 +368,7 @@ class BitVector(AbstractBitVector):
 
     @binary
     def repeat(self, other):
-        return BitVector( other.as_uint() * self.bits() )
+        return BitVector[other.as_uint() * self.size]( other.as_uint() * self.bits() )
 
     @binary_no_cast
     def sext(self, other):
@@ -408,7 +404,8 @@ class BitVector(AbstractBitVector):
         **NOTE:** Does not cast, returns a raw BitVector instead.  See
         docstring for `sext` for more info.
         """
-        return self.concat(BitVector[other.as_uint()](0), self)
+        ext = other.as_uint()
+        return self.concat(BitVector[ext](0), self)
 
     @staticmethod
     def random(width):
