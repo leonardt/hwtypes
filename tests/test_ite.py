@@ -15,5 +15,5 @@ for i in range(0, 32):
 
 @pytest.mark.parametrize("a,b,c", ite_params)
 def test_ite(a, b, c):
-    res = a.ite(b, c)
-    assert res == b if int(a) else c
+    res = c.ite(a, b)
+    assert res == (a if int(c) else b)
