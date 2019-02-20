@@ -4,7 +4,28 @@ import weakref
 
 class AbstractBitVectorMeta(ABCMeta):
     _class_cache = weakref.WeakValueDictionary()
-    def __getitem__(cls, idx : int) -> 'AbstractBitVector':
+    _class_info  = weakref.WeakKeyDictionary()
+
+    def __new__(mcs, name, bases, namespace, **kwargs):
+        size = None
+        for base in bases:
+            if getattr(base, 'is_sized', False):
+                if size is None:
+                    size = base.size
+                elif size != base.size:
+                    raise TypeError("Can't inherit from multiple different sizes")
+
+        t = super().__new__(mcs, name, bases, namespace, **kwargs)
+        if size is None:
+            AbstractBitVectorMeta._class_info[t] = t, size
+        else:
+            AbstractBitVectorMeta._class_info[t] = None, size
+
+        return t
+
+
+
+    def __getitem__(cls, idx : int) -> tp.Type['AbstractBitVector']:
         try:
             return AbstractBitVector._class_cache[cls, idx]
         except KeyError:
@@ -15,35 +36,39 @@ class AbstractBitVectorMeta(ABCMeta):
         if idx < 0:
             raise ValueError('Size of BitVectors must be positive')
 
-        if not getattr(cls._size, '__isabstractmethod__', False):
+        if cls.is_sized:
             raise TypeError('Cannot generate sized from sized')
 
         bases = [cls]
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, AbstractBitVectorMeta))
         bases = tuple(bases)
         class_name = '{}[{}]'.format(cls.__name__, idx)
-        def size(self):
-            return idx
-        t = type(cls)(class_name, bases, {'_size' : size})
+        t = type(cls)(class_name, bases, {})
         t.__module__ = cls.__module__
         AbstractBitVectorMeta._class_cache[cls, idx] = t
+        AbstractBitVectorMeta._class_info[t] = cls, idx
         return t
+
+    @property
+    def unsized_t(cls):
+        return AbstractBitVectorMeta._class_info[cls][0]
+
+    @property
+    def size(cls):
+        return AbstractBitVectorMeta._class_info[cls][1]
+
+    @property
+    def is_sized(cls):
+        return AbstractBitVectorMeta._class_info[cls][1] is not None
+
 
 class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     def __new__(cls, value):
-        if not getattr(cls._size, '__isabstractmethod__', False) or not hasattr(value, '__int__'):
+        if cls.is_sized:
             return super().__new__(cls)
 
         size = int(value).bit_length()
         return cls[size].__new__(cls[size], value)
-
-    @abstractmethod
-    def _size(self):
-        pass
-
-    @property
-    def size(self):
-        return self._size()
 
     @abstractmethod
     def __init__(self):
@@ -51,8 +76,7 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
 
     @property
     def size(self):
-        return self._size()
-
+        return  type(self).size
 
     @abstractmethod
     def make_constant(self, value, num_bits:tp.Optional[int]=None):
