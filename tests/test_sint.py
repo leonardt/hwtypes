@@ -1,7 +1,7 @@
 import pytest
 import operator
 import random
-from bit_vector import UIntVector, SIntVector
+from bit_vector import UIntVector, SIntVector, Bit
 
 def signed(value, width):
     return SIntVector[width](value).as_sint()
@@ -21,29 +21,38 @@ def test_operator_int1(op, reference, width):
         assert expected == int(op(I))
 
 @pytest.mark.parametrize("op, reference", [
-                              (operator.eq, lambda x, y: x == y),
-                              (operator.ne, lambda x, y: x != y),
-                              (operator.lt, lambda x, y: x <  y),
-                              (operator.le, lambda x, y: x <= y),
-                              (operator.gt, lambda x, y: x >  y),
-                              (operator.ge, lambda x, y: x >= y),
                               (operator.and_,   lambda x, y: x & y ),
                               (operator.or_,    lambda x, y: x | y ),
                               (operator.xor,    lambda x, y: x ^ y ),
                               (operator.add,    lambda x, y: x + y ),
                               (operator.sub,    lambda x, y: x - y ),
                               (operator.mul,    lambda x, y: x * y ),
-                              (operator.floordiv,    lambda x, y: x // y ),
+                              (operator.floordiv,    lambda x, y: x // y if y != 0 else -1),
                           ])
 @pytest.mark.parametrize("width", WIDTHS)
 def test_operator_int2(op, reference, width):
     for _ in range(NTESTS):
         I0, I1 = SIntVector.random(width), SIntVector.random(width)
+        expected = signed(reference(int(I0), int(I1)), width)
+        assert expected == int(op(I0, I1))
+
+@pytest.mark.parametrize("op, reference", [
+                              (operator.eq, lambda x, y: x == y),
+                              (operator.ne, lambda x, y: x != y),
+                              (operator.lt, lambda x, y: x <  y),
+                              (operator.le, lambda x, y: x <= y),
+                              (operator.gt, lambda x, y: x >  y),
+                              (operator.ge, lambda x, y: x >= y),
+                          ])
+@pytest.mark.parametrize("width", WIDTHS)
+def test_comparison(op, reference, width):
+    for _ in range(NTESTS):
+        I0, I1 = SIntVector.random(width), SIntVector.random(width)
         if op is operator.floordiv and I1 == 0:
             # Skip divide by zero
             continue
-        expected = signed(reference(int(I0), int(I1)), width)
-        assert expected == int(op(I0, I1))
+        expected = Bit(reference(int(I0), int(I1)))
+        assert expected == bool(op(I0, I1))
 
 @pytest.mark.parametrize("op, reference", [
                               (operator.lshift, lambda x, y: x << y),

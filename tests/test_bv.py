@@ -1,6 +1,6 @@
 import pytest
 import operator
-from bit_vector import BitVector
+from bit_vector import BitVector, Bit
 
 NTESTS = 4
 WIDTHS = [1,2,4,8]
@@ -19,8 +19,6 @@ def test_operator_bit1(op, reference, width):
         assert expected == int(op(I))
 
 @pytest.mark.parametrize("op, reference", [
-                              (operator.eq, lambda x, y: x == y),
-                              (operator.ne, lambda x, y: x != y),
                               (operator.and_,   lambda x, y: x & y ),
                               (operator.or_,    lambda x, y: x | y ),
                               (operator.xor,    lambda x, y: x ^ y ),
@@ -33,6 +31,21 @@ def test_operator_bit2(op, reference, width):
         I0, I1 = BitVector.random(width), BitVector.random(width)
         expected = unsigned(reference(int(I0), int(I1)), width)
         assert expected == int(op(I0, I1))
+
+@pytest.mark.parametrize("op, reference", [
+                              (operator.eq, lambda x, y: x == y),
+                              (operator.ne, lambda x, y: x != y),
+                              (operator.lt, lambda x, y: x  < y),
+                              (operator.le, lambda x, y: x <= y),
+                              (operator.gt, lambda x, y: x  > y),
+                              (operator.ge, lambda x, y: x >= y),
+                              ])
+@pytest.mark.parametrize("width", WIDTHS)
+def test_comparisons(op, reference, width):
+    for _ in range(NTESTS):
+        I0, I1 = BitVector.random(width), BitVector.random(width)
+        expected = Bit(reference(int(I0), int(I1)))
+        assert expected == bool(op(I0, I1))
 
 def test_as():
     bv = BitVector[4](1)

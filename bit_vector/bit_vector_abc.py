@@ -23,9 +23,7 @@ class AbstractBitVectorMeta(ABCMeta):
 
         return t
 
-
-
-    def __getitem__(cls, idx : int) -> tp.Type['AbstractBitVector']:
+    def __getitem__(cls, idx : int) -> 'AbstractBitVectorMeta':
         try:
             return AbstractBitVector._class_cache[cls, idx]
         except KeyError:
@@ -50,184 +48,212 @@ class AbstractBitVectorMeta(ABCMeta):
         return t
 
     @property
-    def unsized_t(cls):
-        return AbstractBitVectorMeta._class_info[cls][0]
+    def unsized_t(cls) -> 'AbstractBitVectorMeta':
+        t = AbstractBitVectorMeta._class_info[cls][0]
+        if t is not None:
+            return t
+        else:
+            raise AttributeError('type {} has no unsized_t'.format(cls))
 
     @property
-    def size(cls):
+    def size(cls) -> int:
         return AbstractBitVectorMeta._class_info[cls][1]
 
     @property
-    def is_sized(cls):
+    def is_sized(cls) -> bool:
         return AbstractBitVectorMeta._class_info[cls][1] is not None
 
+class AbstractBit(metaclass=ABCMeta):
+    @abstractmethod
+    def __eq__(self, other) -> 'AbstractBit':
+        pass
+
+    def __ne__(self, other) -> 'AbstractBit':
+        return ~(self == other)
+
+    @abstractmethod
+    def __invert__(self) -> 'AbstractBit':
+        pass
+
+    @abstractmethod
+    def __and__(self, other : 'AbstractBit') -> 'AbstractBit':
+        pass
+
+    @abstractmethod
+    def __or__(self, other : 'AbstractBit') -> 'AbstractBit':
+        pass
+
+    @abstractmethod
+    def __xor__(self, other : 'AbstractBit') -> 'AbstractBit':
+        pass
+
+    @abstractmethod
+    def ite(self, t_branch, f_branch):
+        pass
 
 class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     def __new__(cls, value):
         if cls.is_sized:
             return super().__new__(cls)
 
-        size = int(value).bit_length()
+        value = int(value)
+        size = value.bit_length()
         return cls[size].__new__(cls[size], value)
 
-    @abstractmethod
-    def __init__(self):
-        pass
-
     @property
-    def size(self):
+    def size(self) -> int:
         return  type(self).size
 
     @abstractmethod
-    def make_constant(self, value, num_bits:tp.Optional[int]=None):
+    def make_constant(self, value, num_bits:tp.Optional[int]=None) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> AbstractBit:
         pass
 
     @abstractmethod
-    def __len__(self):
+    def __len__(self) -> int:
         pass
 
     #could still be staticmethod but I think thats annoying
     @classmethod
     @abstractmethod
-    def concat(cls, x, y):
+    def concat(cls, x, y) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvnot(self):
+    def bvnot(self) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvand(self, other):
+    def bvand(self, other) -> 'AbstractBitVector':
         pass
 
-    def bvnand(self, other):
+    def bvnand(self, other) -> 'AbstractBitVector':
         return self.bvand(other).bvnot()
 
     @abstractmethod
-    def bvor(self, other):
+    def bvor(self, other) -> 'AbstractBitVector':
         pass
 
-    def bvnor(self, other):
+    def bvnor(self, other) -> 'AbstractBitVector':
         return self.bvor(other).bvnot()
 
     @abstractmethod
-    def bvxor(self, other):
+    def bvxor(self, other) -> 'AbstractBitVector':
         pass
 
-    def bvxnor(self, other):
+    def bvxnor(self, other) -> 'AbstractBitVector':
         return self.bvxor(other).bvnot()
 
     @abstractmethod
-    def bvshl(self, other):
+    def bvshl(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvlshr(self, other):
+    def bvlshr(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvashr(self, other):
+    def bvashr(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvrol(self, other):
+    def bvrol(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvror(self, other):
+    def bvror(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvcomp(self, other):
+    def bvcomp(self, other) -> AbstractBit:
         pass
 
-    def bveq(self, other):
+    def bveq(self, other) -> AbstractBit:
         return self.bvcomp(other)
 
-    def bvne(self, other):
-        return self.bvcomp(other).bvnot()
+    def bvne(self, other) -> AbstractBit:
+        return ~self.bvcomp(other)
 
     @abstractmethod
-    def bvult(self, other):
+    def bvult(self, other) -> AbstractBit:
         pass
 
-    def bvule(self, other):
-        return self.bvult(other).bvor(self.bvcomp(other))
+    def bvule(self, other) -> AbstractBit:
+        return self.bvult(other) | self.bvcomp(other)
 
-    def bvugt(self, other):
-        return self.bvule(other).bvnot()
+    def bvugt(self, other) -> AbstractBit:
+        return ~self.bvule(other)
 
-    def bvuge(self, other):
-        return self.bvult(other).bvnot()
+    def bvuge(self, other) -> AbstractBit:
+        return ~self.bvult(other)
 
     @abstractmethod
-    def bvslt(self, other):
+    def bvslt(self, other) -> AbstractBit:
         pass
 
-    def bvsle(self, other):
-        return self.bvslt(other).bvor(self.bvcomp(other))
+    def bvsle(self, other) -> AbstractBit:
+        return self.bvslt(other) | self.bvcomp(other)
 
-    def bvsgt(self, other):
-        return self.bvsle(other).bvnot()
+    def bvsgt(self, other) -> AbstractBit:
+        return ~self.bvsle(other)
 
-    def bvsge(self, other):
-        return self.bvslt(other).bvnot()
-
-    @abstractmethod
-    def bvneg(self):
-        pass
+    def bvsge(self, other) -> AbstractBit:
+        return ~self.bvslt(other)
 
     @abstractmethod
-    def adc(self, other, carry):
+    def bvneg(self) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def ite(i,t,e):
+    def adc(self, other, carry) -> tp.Tuple['AbstractBitVector', AbstractBit]:
         pass
 
     @abstractmethod
-    def bvadd(self, other):
+    def ite(i,t,e) -> 'AbstractBitVector':
         pass
 
-    def bvsub(self, other):
+    @abstractmethod
+    def bvadd(self, other) -> 'AbstractBitVector':
+        pass
+
+    def bvsub(self, other) -> 'AbstractBitVector':
         return self.bvadd(other.bvneg())
 
     @abstractmethod
-    def bvmul(self, other):
+    def bvmul(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvudiv(self, other):
+    def bvudiv(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvurem(self, other):
+    def bvurem(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvsdiv(self, other):
+    def bvsdiv(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def bvsrem(self, other):
+    def bvsrem(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def repeat(self, other):
+    def repeat(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def sext(self, other):
+    def sext(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def ext(self, other):
+    def ext(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
-    def zext(self, other):
+    def zext(self, other) -> 'AbstractBitVector':
         pass

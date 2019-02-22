@@ -53,13 +53,17 @@ def test_size():
     class B(ABV[8]): pass
 
     assert B.size == 8
-    assert B.unsized_t is None
+    with pytest.raises(AttributeError):
+        B.unsized_t
+
     with pytest.raises(TypeError):
         B[2]
 
     class C(A, B): pass
     assert C.size == 8
-    assert C.unsized_t is None
+    with pytest.raises(AttributeError):
+        C.unsized_t
+
     with pytest.raises(TypeError):
         C[6]
 

@@ -1,4 +1,5 @@
-from .bit_vector_abc import AbstractBitVector
+import typing as tp
+from .bit_vector_abc import AbstractBitVector, AbstractBit
 from .compatibility import IntegerTypes, StringTypes
 import functools
 import random
@@ -104,12 +105,76 @@ def no_x(fn):
 
     return wrapped
 
+
+def bit_cast(fn : tp.Callable[['Bit', 'Bit'], 'Bit']) -> tp.Callable[['Bit', tp.Union['Bit', bool]], 'Bit']:
+    @functools.wraps(fn)
+    def wrapped(self : 'Bit', other : tp.Union['Bit', bool]) -> 'Bit':
+        if isinstance(other, Bit):
+            return fn(self, other)
+        elif hasattr(other, '__bool__'):
+            return fn(self, Bit(bool(other)))
+        else:
+            raise TypeError("Can't coerce {} to Bit".format(type(other)))
+    return wrapped
+
+
+class Bit(AbstractBit):
+    def __init__(self, value):
+        if isinstance(value, Bit):
+            self._value = value._value
+        elif hasattr(value, '__bool__'):
+            self._value = bool(value)
+        else:
+            raise TypeError("Can't coerce {} to Bit".format(type(other)))
+
+    def __invert__(self):
+        return Bit(False if self._value else True)
+
+    @bit_cast
+    def __eq__(self, other):
+        return Bit(self._value == other._value)
+
+    @bit_cast
+    def __ne__(self, other):
+        return Bit(self._value != other._value)
+
+    @bit_cast
+    def __and__(self, other):
+        return Bit(self._value & other._value)
+
+    @bit_cast
+    def __or__(self, other):
+        return Bit(self._value | other._value)
+
+    @bit_cast
+    def __xor__(self, other):
+        return Bit(self._value ^ other._value)
+
+    def ite(self, t_branch, f_branch):
+        return t_branch if self._value else f_branch
+
+    def __bool__(self) -> bool:
+        return self._value
+
+    def __repr__(self) -> str:
+        return 'Bit({})'.format(self._value)
+
 class BitVector(AbstractBitVector):
     def __init__(self, value=0):
         if isinstance(value, BitVector):
             self._value = value._value
             self._bits = int2seq(self._value, self.size)
         elif isinstance(value, IntegerTypes):
+            self._value = value
+            self._value &= (1 << self.size)-1
+            self._bits = int2seq(value, self.size)
+        elif hasattr(value, '__int__'):
+            value = int(value)
+            self._value = value
+            self._value &= (1 << self.size)-1
+            self._bits = int2seq(value, self.size)
+        elif isinstance(value, bool) or hasattr(value, '__bool__'):
+            value = int(bool(value))
             self._value = value
             self._value &= (1 << self.size)-1
             self._bits = int2seq(value, self.size)
@@ -161,7 +226,7 @@ class BitVector(AbstractBitVector):
             v = self._bits[index]
             return BitVector[len(v)](v)
         else:
-            return BitVector[1](self.bits()[index])
+            return Bit(self.bits()[index])
 
     @property
     def num_bits(self):
@@ -231,15 +296,15 @@ class BitVector(AbstractBitVector):
         #    result = self.as_bool_list() == other
         #elif isinstance(other, bool) and self.size == 1:
         #    result = self.as_bool_list()[0] == other
-        return BitVector[1](self._value == other._value)
+        return Bit(self._value == other._value)
 
     @binary_no_cast
     def bvult(self, other):
-        return BitVector[1](self.as_uint() < other.as_uint())
+        return Bit(self.as_uint() < other.as_uint())
 
     @binary_no_cast
     def bvslt(self, other):
-        return BitVector[1](self.as_sint() < other.as_sint())
+        return Bit(self.as_sint() < other.as_sint())
 
     @unary
     def bvneg(self):
@@ -256,12 +321,18 @@ class BitVector(AbstractBitVector):
 
         no type checks yet
         """
-        n = a.size
+        T = type(a)
+        if not isinstance(b, T):
+            b = T(b)
+
+        if not isinstance(c, Bit):
+            c = Bit(c)
+
         a = a.zext(1)
         b = b.zext(1)
+        c = T(c).zext(1)
+
         # Extend c by the difference between c's current bit length and n + 1
-        n = n + 1 - c.size
-        c = c.zext(n)
         res = a + b + c
         return res[0:-1], res[-1]
 
