@@ -44,27 +44,27 @@ class Bit(AbstractBit):
             raise TypeError("Can't coerce {} to Bit".format(type(other)))
 
     def __invert__(self):
-        return Bit(not self._value)
+        return type(self)(not self._value)
 
     @bit_cast
     def __eq__(self, other):
-        return Bit(self._value == other._value)
+        return type(self)(self._value == other._value)
 
     @bit_cast
     def __ne__(self, other):
-        return Bit(self._value != other._value)
+        return type(self)(self._value != other._value)
 
     @bit_cast
     def __and__(self, other):
-        return Bit(self._value & other._value)
+        return type(self)(self._value & other._value)
 
     @bit_cast
     def __or__(self, other):
-        return Bit(self._value | other._value)
+        return type(self)(self._value | other._value)
 
     @bit_cast
     def __xor__(self, other):
-        return Bit(self._value ^ other._value)
+        return type(self)(self._value ^ other._value)
 
     def ite(self, t_branch, f_branch):
         return t_branch if self._value else f_branch
@@ -149,7 +149,7 @@ class BitVector(AbstractBitVector):
     def __getitem__(self, index : tp.Union[int, slice]) -> tp.Union['BitVector', Bit]:
         if isinstance(index, slice):
             v = self.bits()[index]
-            return BitVector[len(v)](v)
+            return type(self).unsized_t[len(v)](v)
         elif isinstance(index, int):
             if index < 0:
                 index = self.size+index
@@ -188,15 +188,15 @@ class BitVector(AbstractBitVector):
 
     @bv_cast
     def bvshl(self, other):
-        return type(self)( self.as_uint() << other.as_uint())
+        return type(self)(self.as_uint() << other.as_uint())
 
     @bv_cast
     def bvlshr(self, other):
-        return type(self)( self.as_uint() >> other.as_uint())
+        return type(self)(self.as_uint() >> other.as_uint())
 
     @bv_cast
     def bvashr(self, other):
-        return type(self)( self.as_sint() >> other.as_uint())
+        return type(self)(self.as_sint() >> other.as_uint())
 
     @bv_cast
     def bvrol(self, other):
@@ -230,7 +230,6 @@ class BitVector(AbstractBitVector):
 
         returns a two element tuple of the form (result, carry)
 
-        no type checks yet
         """
         T = type(self)
         other = _coerce(T, other)
