@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import typing as tp
+import functools as ft
 import weakref
 
 class AbstractBitVectorMeta(ABCMeta):
@@ -96,14 +97,26 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
         if cls.is_sized:
             return super().__new__(cls)
 
-        value = int(value)
-        size = value.bit_length()
+        if isinstance(value, AbstractBitVector):
+            size = value.size
+        elif isinstance(value, AbstractBit):
+            size = 1
+        elif isinstance(value, tp.Sequence):
+            size = max(len(value), 1)
+        elif isinstance(value, int):
+            size = max(value.bit_length(), 1)
+        elif hasattr(value, '__int__'):
+            size = max(int(value).bit_length(), 1)
+        else:
+            raise TypeError('Cannot construct {} from {}'.format(cls, value))
+
         return cls[size].__new__(cls[size], value)
 
     @property
     def size(self) -> int:
         return  type(self).size
 
+    @classmethod
     @abstractmethod
     def make_constant(self, value, num_bits:tp.Optional[int]=None) -> 'AbstractBitVector':
         pass

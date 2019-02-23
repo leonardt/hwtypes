@@ -64,7 +64,6 @@ def test_eq():
     assert [BitVector[4](1)] == [BitVector[4](1)]
     assert [[BitVector[4](1)]] == [[BitVector[4](1)]]
 
-    assert BitVector[1](None) == BitVector[1](None)
 
 def test_setitem():
   bv = BitVector(5)
