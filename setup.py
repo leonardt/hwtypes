@@ -11,6 +11,9 @@ from setuptools import setup
 #         req += ";" + str(item.markers)
 #     install_requires.append(req)
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name='hwtypes',
     url='https://github.com/leonardt/hwtypes',
@@ -24,5 +27,7 @@ setup(
         "hwtypes",
     ],
     install_requires=['numpy'],
+    long_description=long_description,
+    long_description_content_type="text/markdown"
     # python_requires='>=3.6'
 )
