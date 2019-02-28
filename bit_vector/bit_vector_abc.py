@@ -16,9 +16,9 @@ class AbstractBitVectorMeta(ABCMeta):
             raise TypeError('Cannot use old style construction on sized types')
         elif cls.is_sized:
             return super().__call__(value)
-        elif size is None:
-            warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
         elif size is _MISSING or size is None:
+            if size is None:
+                warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
             if isinstance(value, AbstractBitVector):
                 size = value.size
             elif isinstance(value, AbstractBit):
