@@ -281,6 +281,8 @@ class BitVector(AbstractBitVector):
     @bv_cast
     def bvurem(self, other):
         other = other.as_uint()
+        if other == 0:
+            return self
         return type(self)(self.as_uint() % other)
 
     # bvumod
