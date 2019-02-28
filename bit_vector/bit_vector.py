@@ -1,5 +1,5 @@
 import typing as tp
-from .bit_vector_abc import AbstractBitVector, AbstractBit
+from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily
 from .compatibility import IntegerTypes, StringTypes
 
 import functools
@@ -35,6 +35,10 @@ def bit_cast(fn : tp.Callable[['Bit', 'Bit'], 'Bit']) -> tp.Callable[['Bit', tp.
 
 
 class Bit(AbstractBit):
+    @staticmethod
+    def get_family() -> TypeFamily:
+        return _Family_
+
     def __init__(self, value):
         if isinstance(value, Bit):
             self._value = value._value
@@ -94,6 +98,10 @@ def bv_cast(fn : tp.Callable[['BitVector', 'BitVector'], tp.Any]) -> tp.Callable
     return wrapped
 
 class BitVector(AbstractBitVector):
+    @staticmethod
+    def get_family() -> TypeFamily:
+        return _Family_
+
     def __init__(self, value=0):
         if isinstance(value, BitVector):
             if value.size > self.size:
@@ -437,3 +445,4 @@ def overflow(a, b, res):
     N = res[-1]
     return (msb_a & msb_b & ~N) or (~msb_a & ~msb_b & N)
 
+_Family_ = TypeFamily(Bit, BitVector, UIntVector, SIntVector)

@@ -1,8 +1,12 @@
 from abc import ABCMeta, abstractmethod
+from collections import namedtuple
 import typing as tp
 import functools as ft
 import weakref
 import warnings
+
+
+TypeFamily = namedtuple('TypeFamily', ['Bit', 'BitVector', 'Unsigned', 'Signed'])
 
 #I want to be able differentiate an old style call
 #BitVector(val, None) from BitVector(val)
@@ -96,6 +100,10 @@ class AbstractBitVectorMeta(ABCMeta):
         return AbstractBitVectorMeta._class_info[cls][1] is not None
 
 class AbstractBit(metaclass=ABCMeta):
+    @staticmethod
+    def get_family() -> TypeFamily:
+        return _Family_
+
     @abstractmethod
     def __eq__(self, other) -> 'AbstractBit':
         pass
@@ -124,6 +132,10 @@ class AbstractBit(metaclass=ABCMeta):
         pass
 
 class AbstractBitVector(metaclass=AbstractBitVectorMeta):
+    @staticmethod
+    def get_family() -> TypeFamily:
+        return _Family_
+
     @property
     def size(self) -> int:
         return  type(self).size
@@ -282,3 +294,6 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     @abstractmethod
     def zext(self, other) -> 'AbstractBitVector':
         pass
+
+
+_Family_ = TypeFamily(AbstractBit, AbstractBitVector, None, None)
