@@ -2,10 +2,41 @@ from abc import ABCMeta, abstractmethod
 import typing as tp
 import functools as ft
 import weakref
+import warnings
 
+#I want to be able differentiate an old style call
+#BitVector(val, None) from BitVector(val)
+_MISSING = object()
 class AbstractBitVectorMeta(ABCMeta):
     _class_cache = weakref.WeakValueDictionary()
     _class_info  = weakref.WeakKeyDictionary()
+
+    def __call__(cls, value, size=_MISSING):
+        if cls.is_sized and size is not _MISSING:
+            raise TypeError('Cannot use old style construction on sized types')
+        elif cls.is_sized:
+            return super().__call__(value)
+        elif size is None:
+            warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
+        elif size is _MISSING or size is None:
+            if isinstance(value, AbstractBitVector):
+                size = value.size
+            elif isinstance(value, AbstractBit):
+                size = 1
+            elif isinstance(value, tp.Sequence):
+                size = max(len(value), 1)
+            elif isinstance(value, int):
+                size = max(value.bit_length(), 1)
+            elif hasattr(value, '__int__'):
+                size = max(int(value).bit_length(), 1)
+            else:
+                raise TypeError('Cannot construct {} from {}'.format(cls, value))
+        else:
+            warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
+
+        return AbstractBitVectorMeta.__call__(cls[size], value)
+
+
 
     def __new__(mcs, name, bases, namespace, **kwargs):
         size = None
@@ -36,7 +67,7 @@ class AbstractBitVectorMeta(ABCMeta):
             raise ValueError('Size of BitVectors must be positive')
 
         if cls.is_sized:
-            raise TypeError('Cannot generate sized from sized')
+            raise TypeError('{} is already sized'.format(cls))
 
         bases = [cls]
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, AbstractBitVectorMeta))
@@ -93,25 +124,6 @@ class AbstractBit(metaclass=ABCMeta):
         pass
 
 class AbstractBitVector(metaclass=AbstractBitVectorMeta):
-    def __new__(cls, value):
-        if cls.is_sized:
-            return super().__new__(cls)
-
-        if isinstance(value, AbstractBitVector):
-            size = value.size
-        elif isinstance(value, AbstractBit):
-            size = 1
-        elif isinstance(value, tp.Sequence):
-            size = max(len(value), 1)
-        elif isinstance(value, int):
-            size = max(value.bit_length(), 1)
-        elif hasattr(value, '__int__'):
-            size = max(int(value).bit_length(), 1)
-        else:
-            raise TypeError('Cannot construct {} from {}'.format(cls, value))
-
-        return cls[size].__new__(cls[size], value)
-
     @property
     def size(self) -> int:
         return  type(self).size
