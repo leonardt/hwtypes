@@ -1,6 +1,6 @@
 import pytest
 import operator
-from bit_vector import BitVector, Bit
+from hwtypes import BitVector, Bit
 
 NTESTS = 4
 WIDTHS = [1,2,4,8]

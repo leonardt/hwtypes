@@ -1,5 +1,5 @@
-from bit_vector import BitVector as BV
-from bit_vector import SIntVector as SV
+from hwtypes import BitVector as BV
+from hwtypes import SIntVector as SV
 import random
 import pytest
 

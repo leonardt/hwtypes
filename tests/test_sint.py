@@ -1,7 +1,7 @@
 import pytest
 import operator
 import random
-from bit_vector import UIntVector, SIntVector, Bit
+from hwtypes import UIntVector, SIntVector, Bit
 
 def signed(value, width):
     return SIntVector[width](value).as_sint()

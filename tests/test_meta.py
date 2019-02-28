@@ -1,6 +1,6 @@
 import pytest
-from bit_vector import AbstractBitVector as ABV
-from bit_vector import BitVector as BV
+from hwtypes import AbstractBitVector as ABV
+from hwtypes import BitVector as BV
 
 def test_subclass():
     class A(ABV): pass

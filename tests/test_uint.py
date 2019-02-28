@@ -1,6 +1,6 @@
 import pytest
 import operator
-from bit_vector import UIntVector, Bit
+from hwtypes import UIntVector, Bit
 
 def unsigned(value, width):
     return UIntVector[width](value).as_uint()

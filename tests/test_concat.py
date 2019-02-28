@@ -1,4 +1,4 @@
-from bit_vector import BitVector
+from hwtypes import BitVector
 
 def test_concat():
     a = BitVector[4](4)

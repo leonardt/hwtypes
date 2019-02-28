@@ -12,15 +12,15 @@ from setuptools import setup
 #     install_requires.append(req)
 
 setup(
-    name='bit_vector',
-    url='https://github.com/leonardt/bit_vector',
+    name='hwtypes',
+    url='https://github.com/leonardt/hwtypes',
     author='Leonard Truong',
     author_email='lenny@cs.stanford.edu',
     version='1.0.0',
     description='A BitVector class for Python',
     scripts=[],
     packages=[
-        "bit_vector",
+        "hwtypes",
     ],
     install_requires=['numpy'],
     # python_requires='>=3.6'

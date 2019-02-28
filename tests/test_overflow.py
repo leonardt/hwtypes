@@ -1,5 +1,5 @@
-from bit_vector import SIntVector as SV
-from bit_vector import overflow
+from hwtypes import SIntVector as SV
+from hwtypes import overflow
 import random
 import pytest
 

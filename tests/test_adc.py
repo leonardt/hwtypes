@@ -1,4 +1,4 @@
-from bit_vector import BitVector as BV
+from hwtypes import BitVector as BV
 import random
 import pytest
 
