@@ -27,10 +27,8 @@ def bit_cast(fn : tp.Callable[['Bit', 'Bit'], 'Bit']) -> tp.Callable[['Bit', tp.
     def wrapped(self : 'Bit', other : tp.Union['Bit', bool]) -> 'Bit':
         if isinstance(other, Bit):
             return fn(self, other)
-        elif hasattr(other, '__bool__'):
-            return fn(self, Bit(bool(other)))
         else:
-            raise TypeError("Can't coerce {} to Bit".format(type(other)))
+            return fn(self, Bit(other))
     return wrapped
 
 
@@ -42,6 +40,12 @@ class Bit(AbstractBit):
     def __init__(self, value):
         if isinstance(value, Bit):
             self._value = value._value
+        elif isinstance(value, bool):
+            self._value = value
+        elif isinstance(value, int):
+            if value not in {0, 1}:
+                raise ValueError('Bit must have value 0 or 1 not {}'.format(value))
+            self._value = bool(value)
         elif hasattr(value, '__bool__'):
             self._value = bool(value)
         else:
