@@ -15,10 +15,10 @@ for i in range(0, 64):
 
 @pytest.mark.parametrize("n,num_bits,ext_amount", zext_params)
 def test_zext(n, num_bits, ext_amount):
-    a = BV(n, num_bits)
+    a = BV[num_bits](n)
     assert num_bits + ext_amount == a.zext(ext_amount).num_bits
     assert n == a.zext(ext_amount).as_uint()
-    assert BV(n, num_bits + ext_amount) == a.zext(ext_amount)
+    assert BV[num_bits + ext_amount](n) == a.zext(ext_amount)
 
 
 sext_params = []
@@ -32,7 +32,7 @@ for i in range(0, 64):
 
 @pytest.mark.parametrize("n,num_bits,ext_amount", sext_params)
 def test_sext(n, num_bits, ext_amount):
-    a = SV(n, num_bits)
+    a = SV[num_bits](n)
     assert num_bits + ext_amount == a.sext(ext_amount).num_bits
-    assert SV(n, num_bits + ext_amount).bits() == a.sext(ext_amount).bits()
-    assert SV(n, num_bits + ext_amount) == a.sext(ext_amount)
+    assert SV[num_bits + ext_amount](n).bits() == a.sext(ext_amount).bits()
+    assert SV[num_bits + ext_amount](n) == a.sext(ext_amount)
