@@ -66,7 +66,7 @@ class AbstractBitVectorMeta(ABCMeta):
             pass
 
         if not isinstance(idx, int):
-            raise TypeError()
+            raise TypeError('Size of BitVectors must be of type int not {}'.format(type(idx)))
         if idx < 0:
             raise ValueError('Size of BitVectors must be positive')
 
