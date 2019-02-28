@@ -21,7 +21,7 @@ setup(
     author_email='lenny@cs.stanford.edu',
     version='1.0.1',
     description='Python implementations of fixed size hardware types (Bit, '
-                'BitVector, UInt, SInt, ...)',
+                'BitVector, UInt, SInt, ...) based on the SMT-LIB2 semantics',
     scripts=[],
     packages=[
         "hwtypes",
