@@ -105,7 +105,7 @@ class BitVector(AbstractBitVector):
     def __init__(self, value=0):
         if isinstance(value, BitVector):
             if value.size > self.size:
-                warnings.warn('Truncating value {} to {}'.format(value, type(self)))
+                warnings.warn('Truncating value from {} to {}'.format(type(value), type(self)))
             value = value._value
         elif isinstance(value, Bit):
             value = int(bool(value))
