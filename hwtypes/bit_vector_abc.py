@@ -150,6 +150,10 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
         pass
 
     @abstractmethod
+    def __setitem__(self, index : int, value : AbstractBit):
+        pass
+
+    @abstractmethod
     def __len__(self) -> int:
         pass
 

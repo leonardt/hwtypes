@@ -151,7 +151,7 @@ class BitVector(AbstractBitVector):
         if isinstance(index, slice):
             raise NotImplementedError()
         else:
-            if not (isinstance(value, bool) or isinstance(value, int) and value in {0, 1}):
+            if not (isinstance(value, bool) or isinstance(value, Bit) or (isinstance(value, int) and value in {0, 1})):
                 raise ValueError("Second argument __setitem__ on a single BitVector index should be a boolean or 0 or 1, not {value}".format(value=value))
             if value:
                 self._value |= 1 << index
