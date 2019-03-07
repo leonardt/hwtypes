@@ -15,15 +15,21 @@ class AbstractBitVectorMeta(ABCMeta):
     _class_cache = weakref.WeakValueDictionary()
     _class_info  = weakref.WeakKeyDictionary()
 
-    def __call__(cls, value, size=_MISSING):
+    def __call__(cls, value=_MISSING, size=_MISSING, *args, **kwargs):
         if cls.is_sized and size is not _MISSING:
             raise TypeError('Cannot use old style construction on sized types')
         elif cls.is_sized:
-            return super().__call__(value)
+            if value is _MISSING:
+                return super().__call__(*args, **kwargs)
+            else:
+                return super().__call__(value, *args, **kwargs)
         elif size is _MISSING or size is None:
             if size is None:
                 warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
-            if isinstance(value, AbstractBitVector):
+
+            if value is _MISSING:
+                raise TypeError('Cannot construct {} without a value'.format(cls, value))
+            elif isinstance(value, AbstractBitVector):
                 size = value.size
             elif isinstance(value, AbstractBit):
                 size = 1
@@ -209,21 +215,22 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
         pass
 
     @abstractmethod
-    def bvcomp(self, other) -> AbstractBit:
+    def bvcomp(self, other) -> 'AbstractBitVector[1]':
         pass
 
+    @abstractmethod
     def bveq(self, other) -> AbstractBit:
-        return self.bvcomp(other)
+        pass
 
     def bvne(self, other) -> AbstractBit:
-        return ~self.bvcomp(other)
+        return ~self.bveq(other)
 
     @abstractmethod
     def bvult(self, other) -> AbstractBit:
         pass
 
     def bvule(self, other) -> AbstractBit:
-        return self.bvult(other) | self.bvcomp(other)
+        return self.bvult(other) | self.bveq(other)
 
     def bvugt(self, other) -> AbstractBit:
         return ~self.bvule(other)
@@ -236,7 +243,7 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
         pass
 
     def bvsle(self, other) -> AbstractBit:
-        return self.bvslt(other) | self.bvcomp(other)
+        return self.bvslt(other) | self.bveq(other)
 
     def bvsgt(self, other) -> AbstractBit:
         return ~self.bvsle(other)
