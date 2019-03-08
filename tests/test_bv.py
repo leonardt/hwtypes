@@ -8,6 +8,23 @@ WIDTHS = [1,2,4,8]
 def unsigned(value, width):
     return BitVector[width](value)
 
+
+def test_illegal():
+    with pytest.raises(TypeError):
+        BitVector[1](object())
+
+@pytest.mark.parametrize("value, arg",[
+    (0, 0),
+    (0, [0, 0]),
+    (0, Bit(0)),
+    (1, Bit(1)),
+    (1, [1, 0]),
+    (2, [0, 1]),
+    (1, 5),
+    ])
+def test_uint(value, arg):
+    assert BitVector[2](arg).as_uint() == value
+
 @pytest.mark.parametrize("op, reference", [
                               (operator.invert, lambda x: ~x),
                           ])

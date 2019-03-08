@@ -27,10 +27,8 @@ def bit_cast(fn : tp.Callable[['Bit', 'Bit'], 'Bit']) -> tp.Callable[['Bit', tp.
     def wrapped(self : 'Bit', other : tp.Union['Bit', bool]) -> 'Bit':
         if isinstance(other, Bit):
             return fn(self, other)
-        elif hasattr(other, '__bool__'):
-            return fn(self, Bit(bool(other)))
         else:
-            raise TypeError("Can't coerce {} to Bit".format(type(other)))
+            return fn(self, Bit(other))
     return wrapped
 
 
@@ -42,10 +40,16 @@ class Bit(AbstractBit):
     def __init__(self, value):
         if isinstance(value, Bit):
             self._value = value._value
+        elif isinstance(value, bool):
+            self._value = value
+        elif isinstance(value, int):
+            if value not in {0, 1}:
+                raise ValueError('Bit must have value 0 or 1 not {}'.format(value))
+            self._value = bool(value)
         elif hasattr(value, '__bool__'):
             self._value = bool(value)
         else:
-            raise TypeError("Can't coerce {} to Bit".format(type(other)))
+            raise TypeError("Can't coerce {} to Bit".format(type(value)))
 
     def __invert__(self):
         return type(self)(not self._value)
@@ -71,7 +75,32 @@ class Bit(AbstractBit):
         return type(self)(self._value ^ other._value)
 
     def ite(self, t_branch, f_branch):
-        return t_branch if self._value else f_branch
+        tb_t = type(t_branch)
+        fb_t = type(f_branch)
+        BV_t = self.get_family().BitVector
+        if isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
+            if tb_t is not fb_t:
+                raise TypeError('Both branches must have the same type')
+            T = tb_t
+        elif isinstance(t_branch, BV_t):
+            f_branch = tb_t(f_branch)
+            T = tb_t
+        elif isinstance(f_branch, BV_t):
+            t_branch = fb_t(t_branch)
+            T = fb_t
+        else:
+            t_branch = BV_t(t_branch)
+            f_branch = BV_t(f_branch)
+            ext = t_branch.size - f_branch.size
+            if ext > 0:
+                f_branch = f_branch.zext(ext)
+            elif ext < 0:
+                t_branch = t_branch.zext(-ext)
+
+            T = type(t_branch)
+
+
+        return t_branch if self else f_branch
 
     def __bool__(self) -> bool:
         return self._value
@@ -147,12 +176,17 @@ class BitVector(AbstractBitVector):
         if isinstance(index, slice):
             raise NotImplementedError()
         else:
-            if not (isinstance(value, bool) or isinstance(value, int) and value in {0, 1}):
+            if not (isinstance(value, bool) or isinstance(value, Bit) or (isinstance(value, int) and value in {0, 1})):
                 raise ValueError("Second argument __setitem__ on a single BitVector index should be a boolean or 0 or 1, not {value}".format(value=value))
-            if value:
-                self._value |= 1 << index
-            else:
-                self._value &= ~(1 << index)
+
+            if index < 0:
+                index = self.size+index
+
+            if not (0 <= index < self.size):
+                raise IndexError()
+
+            mask = type(self)(1 << index)
+            self._value = Bit(value).ite(self | mask,  self & ~mask)._value
 
     def __getitem__(self, index : tp.Union[int, slice]) -> tp.Union['BitVector', Bit]:
         if isinstance(index, slice):
@@ -218,21 +252,25 @@ class BitVector(AbstractBitVector):
 
     @bv_cast
     def bvcomp(self, other):
-        return Bit(self._value == other._value)
+        return type(self).unsized_t[1](self.as_uint() == other.as_uint())
+
+    @bv_cast
+    def bveq(self, other):
+        return self.get_family().Bit(self.as_uint() == other.as_uint())
 
     @bv_cast
     def bvult(self, other):
-        return Bit(self.as_uint() < other.as_uint())
+        return self.get_family().Bit(self.as_uint() < other.as_uint())
 
     @bv_cast
     def bvslt(self, other):
-        return Bit(self.as_sint() < other.as_sint())
+        return self.get_family().Bit(self.as_sint() < other.as_sint())
 
     def bvneg(self):
         return type(self)(~self.as_uint() + 1)
 
 
-    def adc(self, other, carry : Bit) -> tp.Tuple['BitVector', Bit]:
+    def adc(self, other : 'BitVector', carry : Bit) -> tp.Tuple['BitVector', Bit]:
         """
         add with carry
 
@@ -251,17 +289,7 @@ class BitVector(AbstractBitVector):
         return res[0:-1], res[-1]
 
     def ite(self, t_branch, f_branch):
-        T_t = type(t_branch)
-        T_f = type(f_branch)
-        if T_t != T_f:
-            if not isinstance(t_branch, BitVector) and isinstance(f_branch, BitVector):
-                t_branch = _coerce(t_branch, T_f)
-            elif not isinstance(f_branch, BitVector) and isinstance(t_branch, BitVector):
-                f_branch = _coerce(f_branch, T_t)
-            else:
-                raise TypeError("Inconsistent return type")
-
-        return t_branch if self.as_uint() else f_branch
+        return self.bvne(0).ite(t_branch, f_branch)
 
     @bv_cast
     def bvadd(self, other):
