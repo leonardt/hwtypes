@@ -49,7 +49,7 @@ class Bit(AbstractBit):
         elif hasattr(value, '__bool__'):
             self._value = bool(value)
         else:
-            raise TypeError("Can't coerce {} to Bit".format(type(other)))
+            raise TypeError("Can't coerce {} to Bit".format(type(value)))
 
     def __invert__(self):
         return type(self)(not self._value)
