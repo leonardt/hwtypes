@@ -9,6 +9,9 @@ def unsigned(value, width):
     return BitVector[width](value)
 
 
+def test_illegal():
+    with pytest.raises(TypeError):
+        BitVector[1](object())
 
 @pytest.mark.parametrize("value, arg",[
     (0, 0),

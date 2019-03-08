@@ -14,6 +14,13 @@ class FalseType:
     def __bool__():
         return False
 
+def test_illegal():
+    with pytest.raises(TypeError):
+        Bit(object())
+
+    with pytest.raises(ValueError):
+        Bit(2)
+
 @pytest.mark.parametrize("value, arg",[
     (False, False),
     (False, 0),
