@@ -378,7 +378,7 @@ class BitVector(AbstractBitVector):
         return int2seq(self._value, self.size)
 
     def as_bool_list(self):
-        return [bool(x) for x in self._bits]
+        return [bool(x) for x in self.bits()]
 
     def repeat(self, r):
         r = int(r)
