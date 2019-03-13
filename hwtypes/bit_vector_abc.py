@@ -267,8 +267,9 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     def bvadd(self, other) -> 'AbstractBitVector':
         pass
 
+    @abstractmethod
     def bvsub(self, other) -> 'AbstractBitVector':
-        return self.bvadd(other.bvneg())
+        pass
 
     @abstractmethod
     def bvmul(self, other) -> 'AbstractBitVector':
