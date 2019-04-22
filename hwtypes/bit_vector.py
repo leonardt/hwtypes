@@ -296,6 +296,10 @@ class BitVector(AbstractBitVector):
         return type(self)(self.as_uint() + other.as_uint())
 
     @bv_cast
+    def bvsub(self, other):
+        return type(self)(self.as_uint() - other.as_uint())
+
+    @bv_cast
     def bvmul(self, other):
         return type(self)(self.as_uint() * other.as_uint())
 
