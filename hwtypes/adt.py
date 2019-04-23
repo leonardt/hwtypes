@@ -1,7 +1,7 @@
-from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta
+from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta, is_adt_type
 
 __all__  = ['Tuple', 'Product', 'Sum', 'Enum']
-__all__ += ['new', 'new_instruction']
+__all__ += ['new', 'new_instruction', 'is_adt_type']
 
 #special sentinal value
 class _MISSING: pass
@@ -127,6 +127,15 @@ class Enum(metaclass=EnumMeta):
 
     def __repr__(self):
         return f'{type(self).__name__}.{self.name}'
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.value == other.value
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        return hash(self.value)
 
 def new_instruction():
     return EnumMeta.Auto()
