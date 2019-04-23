@@ -136,12 +136,6 @@ class ProductMeta(TupleMeta):
     def __new__(mcs, name, bases, namespace, **kwargs):
         fields = {}
         ns = {}
-        for k, v in namespace.items():
-            if isinstance(v, type):
-                fields[k] = v
-            else:
-                ns[k] = v
-
         for base in bases:
             if base.is_bound:
                 for k,v in base.field_dict.items():
@@ -149,6 +143,15 @@ class ProductMeta(TupleMeta):
                         raise TypeError(f'Conflicting defintions of field {k}')
                     else:
                         fields[k] = v
+        for k, v in namespace.items():
+            if isinstance(v, type):
+                if k in fields:
+                    raise TypeError(f'Conflicting defintions of field {k}')
+                else:
+                    fields[k] = v
+            else:
+                ns[k] = v
+
 
         if fields:
             return mcs.from_fields(fields, name, bases, ns,  **kwargs)
