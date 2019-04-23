@@ -4,6 +4,7 @@ import typing as tp
 import weakref
 
 from types import MappingProxyType
+
 __all__ = ['BoundMeta', 'TupleMeta', 'ProductMeta', 'SumMeta', 'EnumMeta']
 
 def _issubclass(sub : tp.Any, parent : type) -> bool:
@@ -19,6 +20,10 @@ def _is_dunder(name):
 
 def _is_descriptor(obj):
     return hasattr(obj, '__get__') or hasattr(obj, '__set__') or hasattr(obj, '__delete__')
+
+def is_adt_type(t):
+    return isinstance(t, BoundMeta)
+
 
 class BoundMeta(type):
     # (UnboundType, (types...)) : BoundType
@@ -137,6 +142,13 @@ class ProductMeta(TupleMeta):
             else:
                 ns[k] = v
 
+        for base in bases:
+            if base.is_bound:
+                for k,v in base.field_dict.items():
+                    if k in fields:
+                        raise TypeError(f'Conflicting defintions of field {k}')
+                    else:
+                        fields[k] = v
 
         if fields:
             return mcs.from_fields(fields, name, bases, ns,  **kwargs)
@@ -248,8 +260,6 @@ class EnumMeta(BoundMeta):
     def __new__(mcs, cls_name, bases, namespace, **kwargs):
         elems = {}
         ns = {}
-        used = set()
-        auto = set()
 
         for k, v in namespace.items():
             if isinstance(v,  (int, mcs.Auto)):
