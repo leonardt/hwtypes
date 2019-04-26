@@ -7,9 +7,10 @@ install:
 - pysmt-install --check
 - pip install pytest-cov
 - pip install -e .
-script: py.test --cov=hwtypes tests/
 jobs:
   include:
+  - stage: test
+    script: py.test --cov=hwtypes tests/
   - stage: deploy
     script: skip
     deploy: &pypi
