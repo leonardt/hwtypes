@@ -26,7 +26,7 @@ setup(
     packages=[
         "hwtypes",
     ],
-    install_requires=['numpy', 'pysmt', 'z3'],
+    install_requires=['numpy', 'pysmt', 'z3-solver'],
     long_description=long_description,
     long_description_content_type="text/markdown"
     # python_requires='>=3.6'
