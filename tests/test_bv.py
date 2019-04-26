@@ -36,12 +36,17 @@ def test_operator_bit1(op, reference, width):
         assert expected == int(op(I))
 
 @pytest.mark.parametrize("op, reference", [
-                              (operator.and_,   lambda x, y: x & y ),
-                              (operator.or_,    lambda x, y: x | y ),
-                              (operator.xor,    lambda x, y: x ^ y ),
-                              (operator.lshift, lambda x, y: x << y),
-                              (operator.rshift, lambda x, y: x >> y),
-                          ])
+    (operator.add,      lambda x, y: x + y ),
+    (operator.mul,      lambda x, y: x * y ),
+    (operator.sub,      lambda x, y: x - y ),
+    (operator.floordiv, lambda x, y: x // y if y != 0 else -1),
+    (operator.mod,      lambda x, y: x % y if y != 0 else x),
+    (operator.and_,     lambda x, y: x & y ),
+    (operator.or_,      lambda x, y: x | y ),
+    (operator.xor,      lambda x, y: x ^ y ),
+    (operator.lshift,   lambda x, y: x << y),
+    (operator.rshift,   lambda x, y: x >> y),
+    ])
 @pytest.mark.parametrize("width", WIDTHS)
 def test_operator_bit2(op, reference, width):
     for _ in range(NTESTS):
