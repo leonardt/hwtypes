@@ -122,7 +122,7 @@ class z3Bit(AbstractBit):
 
     @bit_cast
     def __xor__(self, other : 'z3Bit') -> 'z3Bit':
-        return type(self)(smt.Xor(self.value, other.value))
+        return type(self)(z3.Xor(self.value, other.value))
 
     def ite(self, t_branch, f_branch):
         tb_t = type(t_branch)
