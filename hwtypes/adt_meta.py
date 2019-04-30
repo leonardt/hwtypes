@@ -121,7 +121,7 @@ class TupleMeta(BoundMeta):
             if isinstance(field, BoundMeta):
                 field_iters.append(field.enumerate())
             else:
-                field_iters.append((field(),))
+                field_iters.append((field(0),))
 
         for args in it.product(*field_iters):
             yield cls(*args)
