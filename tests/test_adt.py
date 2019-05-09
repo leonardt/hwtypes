@@ -40,10 +40,16 @@ def test_tuple():
     assert isinstance(Tu(En.a, En.a), Tuple)
     assert isinstance(Tu(En.a, En.a), Tu)
 
-    assert Tu(En.a, En.b)[1] == En.b
+    t = Tu(En.a, En.b)
+    assert (t[0],t[1]) == (En.a,En.b)
+    t[0] = En.b
+    assert (t[0],t[1]) == (En.b,En.b)
 
     with pytest.raises(TypeError):
         Tu(En.a, 1)
+
+    with pytest.raises(TypeError):
+        t[1] = 1
 
 def test_product():
     assert set(Pr.enumerate()) == {
@@ -64,13 +70,25 @@ def test_product():
     assert issubclass(Pr, Tuple)
     assert isinstance(Pr(En.a, En.b), Tu)
 
+    assert Pr[0] == Pr.x == En
+    assert Pr[1] == Pr.y == En
+
     assert Pr.field_dict == {'x' : En, 'y' : En }
     assert Pr(En.b, En.a).value_dict == {'x' : En.b, 'y' : En.a}
 
-    assert Pr(En.a, En.b).y == En.b
+    p = Pr(En.a, En.b)
+    assert p[0] == p.x == En.a
+    assert p[1] == p.y == En.b
+    p.x = En.b
+    assert p[0] == p.x == En.b
+    p[0] = En.a
+    assert p[0] == p.x == En.a
+
     with pytest.raises(TypeError):
         Pr(En.a, 1)
 
+    with pytest.raises(TypeError):
+        p[0] = 1
 
 def test_sum():
     assert set(Su.enumerate()) == {
