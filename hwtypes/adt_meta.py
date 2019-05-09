@@ -179,10 +179,11 @@ class ProductMeta(TupleMeta):
         ls = {}
 
         arg_list = ','.join(fields.keys())
+        type_sig = ','.join(f'{k}: {v.__name__!r}' for k,v in fields.items())
 
         #build __new__
         __new__ = f'''
-def __new__(cls, {','.join(fields.keys())}):
+def __new__(cls, {type_sig}):
     return super({name}, cls).__new__(cls, {arg_list})
 '''
         exec(__new__, gs, ls)
@@ -190,7 +191,7 @@ def __new__(cls, {','.join(fields.keys())}):
 
         #build __init__
         __init__ = f'''
-def __init__(self, {','.join(fields.keys())}):
+def __init__(self, {type_sig}):
     return super({name}, self).__init__({arg_list})
 '''
         exec(__init__, gs, ls)
@@ -252,6 +253,11 @@ class SumMeta(BoundMeta):
             else:
                 yield cls(field())
 
+    @property
+    def field_dict(cls):
+        return MappingProxyType({field.__name__ : field for field in cls.fields})
+
+
 class EnumMeta(BoundMeta):
     # EnumType : (ElemName : Elem)
     _elem_name_table = weakref.WeakKeyDictionary()
@@ -270,7 +276,7 @@ class EnumMeta(BoundMeta):
             elif _is_dunder(k) or _is_descriptor(v):
                 ns[k] = v
             else:
-                raise TypeError(f'Enum values should be ints not {type(v)}')
+                raise TypeError(f'Enum value should be int not {type(v)}')
 
         t = super().__new__(mcs, cls_name, bases, ns, **kwargs)
 
