@@ -1,4 +1,5 @@
 from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta, is_adt_type
+from types import MappingProxyType
 
 __all__  = ['Tuple', 'Product', 'Sum', 'Enum']
 __all__ += ['new', 'new_instruction', 'is_adt_type']
@@ -86,12 +87,12 @@ class Product(Tuple, metaclass=ProductMeta):
         d = {}
         for k in type(self).field_dict:
             d[k] = getattr(self, k)
-        return d
+        return MappingProxyType(d)
 
 class Sum(metaclass=SumMeta):
     def __init__(self, value):
-        if type(value) not in type(self).fields and value not in type(self).fields:
-            raise TypeError('Value {} is not of types {}'.format(value, type(self).fields))
+        if not isinstance(value, tuple(type(self).fields)):
+            raise TypeError(f'Value {value} is not of types {type(self).fields}')
         self._value = value
 
     def __eq__(self, other):
@@ -112,6 +113,16 @@ class Sum(metaclass=SumMeta):
 
     def __repr__(self) -> str:
         return f'{type(self)}({self.value})'
+
+    @property
+    def value_dict(self):
+        d = {}
+        for k,t in type(self).field_dict.items():
+            if isinstance(self.value, t):
+                d[k] = self.value
+            else:
+                d[k] = None
+        return MappingProxyType(d)
 
 class Enum(metaclass=EnumMeta):
     def __init__(self, value):

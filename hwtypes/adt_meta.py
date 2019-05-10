@@ -4,8 +4,10 @@ import typing as tp
 import weakref
 
 from types import MappingProxyType
+from collections.abc import Mapping, MutableMapping
 
 __all__ = ['BoundMeta', 'TupleMeta', 'ProductMeta', 'SumMeta', 'EnumMeta']
+
 
 def _issubclass(sub : tp.Any, parent : type) -> bool:
     try:
@@ -13,13 +15,37 @@ def _issubclass(sub : tp.Any, parent : type) -> bool:
     except TypeError:
         return False
 
+
 def _is_dunder(name):
     return (len(name) > 4
             and name[:2] == name[-2:] == '__'
             and name[2] != '_' and name[-3] != '_')
 
+
 def _is_descriptor(obj):
     return hasattr(obj, '__get__') or hasattr(obj, '__set__') or hasattr(obj, '__delete__')
+
+
+class _key_map_dict(Mapping):
+    def __init__(self, f: Mapping, d: Mapping):
+        self._f = f
+        self._d = d
+
+    def __getitem__(self, key):
+        return self._d[self._f[key]]
+
+    def __iter__(self):
+        yield from self._f
+
+    def __len__(self):
+        return len(self._f)
+
+    def __repr__(self):
+        c = []
+        for k,v in self.items():
+            c.append('{}:{}'.format(k,v))
+        return f'{type(self).__name__}({",".join(c)})'
+
 
 def is_adt_type(t):
     return isinstance(t, BoundMeta)
@@ -127,11 +153,8 @@ class TupleMeta(BoundMeta):
             yield cls(*args)
 
 class ProductMeta(TupleMeta):
-    # ProductType : (FieldName : int)
-    _field_idx_table = weakref.WeakKeyDictionary()
     # ProductType : (FieldName : FieldType)
-    # Not techincally necesery but convient
-    _field_type_table = weakref.WeakKeyDictionary()
+    _field_table = weakref.WeakKeyDictionary()
 
     def __new__(mcs, name, bases, namespace, **kwargs):
         fields = {}
@@ -151,7 +174,6 @@ class ProductMeta(TupleMeta):
                     fields[k] = v
             else:
                 ns[k] = v
-
 
         if fields:
             return mcs.from_fields(fields, name, bases, ns,  **kwargs)
@@ -179,10 +201,11 @@ class ProductMeta(TupleMeta):
         ls = {}
 
         arg_list = ','.join(fields.keys())
+        type_sig = ','.join(f'{k}: {v.__name__!r}' for k,v in fields.items())
 
         #build __new__
         __new__ = f'''
-def __new__(cls, {','.join(fields.keys())}):
+def __new__(cls, {type_sig}):
     return super({name}, cls).__new__(cls, {arg_list})
 '''
         exec(__new__, gs, ls)
@@ -190,36 +213,35 @@ def __new__(cls, {','.join(fields.keys())}):
 
         #build __init__
         __init__ = f'''
-def __init__(self, {','.join(fields.keys())}):
+def __init__(self, {type_sig}):
     return super({name}, self).__init__({arg_list})
 '''
         exec(__init__, gs, ls)
         t.__init__ = ls['__init__']
 
+        idx_table = dict((k, i) for i,k in enumerate(fields.keys()))
 
         #build properties
         for field_name in fields.keys():
             prop = f'''
 @property
 def {field_name}(self):
-    return self[{mcs.__name__}._field_idx_table[type(self)][{field_name!r}]]
+    return self[{idx_table[field_name]}]
 
 @{field_name}.setter
 def {field_name}(self, value):
-    self[{mcs.__name__}._field_idx_table[type(self)][{field_name!r}]] = value
+    self[{idx_table[field_name]}] = value
 '''
             exec(prop, gs, ls)
             setattr(t, field_name, ls[field_name])
 
         #Store the field indexs
-        mcs._field_idx_table[t] = dict((k, i) for i,k in enumerate(fields.keys()))
-        #Store the field types
-        mcs._field_type_table[t] = fields
+        mcs._field_table[t] = _key_map_dict(idx_table, t)
         return t
 
     def __getattribute__(cls, name):
         try:
-            return type(cls)._field_type_table[cls][name]
+            return type(cls)._field_table[cls][name]
         except KeyError:
             pass
         return super().__getattribute__(name)
@@ -239,7 +261,8 @@ def {field_name}(self, value):
 
     @property
     def field_dict(cls):
-        return MappingProxyType(type(cls)._field_type_table[cls])
+        return MappingProxyType(type(cls)._field_table[cls])
+
 
 class SumMeta(BoundMeta):
     def _fields_cb(cls, idx):
@@ -251,6 +274,11 @@ class SumMeta(BoundMeta):
                 yield from map(cls, field.enumerate())
             else:
                 yield cls(field())
+
+    @property
+    def field_dict(cls):
+        return MappingProxyType({field.__name__ : field for field in cls.fields})
+
 
 class EnumMeta(BoundMeta):
     # EnumType : (ElemName : Elem)
@@ -270,7 +298,7 @@ class EnumMeta(BoundMeta):
             elif _is_dunder(k) or _is_descriptor(v):
                 ns[k] = v
             else:
-                raise TypeError(f'Enum values should be ints not {type(v)}')
+                raise TypeError(f'Enum value should be int not {type(v)}')
 
         t = super().__new__(mcs, cls_name, bases, ns, **kwargs)
 
@@ -308,4 +336,3 @@ class EnumMeta(BoundMeta):
 
     def enumerate(cls):
         yield from cls.fields
-
