@@ -194,7 +194,6 @@ class FPVector(AbstractFPVector):
     def to_ubv(self, size : int) -> BitVector:
         return BitVector[size](int(self._value))
 
-
     @set_context
     def to_sbv(self, size : int) -> SIntVector:
         return SIntVector[size](int(self._value))
@@ -203,6 +202,7 @@ class FPVector(AbstractFPVector):
         raise NotImplementedError()
 
     def __neg__(self): return self.fp_neg()
+    def __abs__(self): return self.fp_abs()
     def __add__(self, other): return self.fp_add(other)
     def __sub__(self, other): return self.fp_sub(other)
     def __mul__(self, other): return self.fp_mul(other)
@@ -216,3 +216,5 @@ class FPVector(AbstractFPVector):
     def __le__(self, other): return self.fp_leq(other)
     def __lt__(self, other): return self.fp_lt(other)
 
+    def __float__(self):
+        return float(self._value)
