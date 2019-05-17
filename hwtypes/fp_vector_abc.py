@@ -17,23 +17,20 @@ class AbstractFPVectorMeta(ABCMeta):
     # FPVectorType, (eb, mb, mode, ieee_compliance) :  FPVectorType[eb, mb, mode, ieee_compliance]
     _class_cache = weakref.WeakValueDictionary()
 
-    # FPVectorType : UnsizedFPVectorType, (eb, mb, mode ,ieee_compliance)
-    _class_info  = weakref.WeakKeyDictionary()
+    def __new__(mcs, name, bases, namespace, info=(None, None), **kwargs):
+        if '_info_' in namespace:
+            raise TypeError('class attribute _info_ is reversed by the type machinery')
 
-    def __new__(mcs, name, bases, namespace, **kwargs):
-        info = None
+        binding = info[1]
         for base in bases:
             if getattr(base, 'is_bound', False):
-                if info is None:
-                    info = base.info
-                elif info != base.info:
+                if binding is None:
+                    binding = base.binding
+                elif binding != base.binding:
                     raise TypeError("Can't inherit from multiple FP types")
-        t = super().__new__(mcs, name, bases, namespace, **kwargs)
-        if info is None:
-            mcs._class_info[t] = t, info
-        else:
-            mcs._class_info[t] = None, info
 
+        namespace['_info_'] = info[0], binding
+        t = super().__new__(mcs, name, bases, namespace, **kwargs)
         return t
 
     def __getitem__(cls, idx : tp.Tuple[int, int, RoundingMode, bool]):
@@ -60,16 +57,14 @@ class AbstractFPVectorMeta(ABCMeta):
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, AbstractFPVectorMeta))
         bases = tuple(bases)
         class_name = f'{cls.__name__}[{eb},{mb},{mode},{ieee_compliance}]'
-        t = mcs(class_name, bases, {})
+        t = mcs(class_name, bases, {}, info=(cls, idx))
         t.__module__ = cls.__module__
         mcs._class_cache[cls, idx] = t
-        mcs._class_info[t] = cls, idx
-
         return t
 
     @property
     def unbound_t(cls) -> 'AbstractBitVectorMeta':
-        t = type(cls)._class_info[cls][0]
+        t = cls._info_[0]
         if t is not None:
             return t
         else:
@@ -81,27 +76,39 @@ class AbstractFPVectorMeta(ABCMeta):
 
     @property
     def is_bound(cls):
-        return cls.info is not None
+        return cls.binding is not None
 
     @property
-    def info(cls):
-        return type(cls)._class_info[cls][1]
+    def binding(cls):
+        return cls._info_[1]
 
     @property
     def exponent_size(cls):
-        return cls.info[0]
+        if cls.is_bound:
+            return cls.binding[0]
+        else:
+            raise AttributeError('unbound type has no exponent_size')
 
     @property
     def mantissa_size(cls):
-        return cls.info[1]
+        if cls.is_bound:
+            return cls.binding[1]
+        else:
+            raise AttributeError('unbound type has no mantissa_size')
 
     @property
     def mode(cls) -> RoundingMode:
-        return cls.info[2]
+        if cls.is_bound:
+            return cls.binding[2]
+        else:
+            raise AttributeError('unbound type has no mode')
 
     @property
     def ieee_compliance(cls) -> bool:
-        return cls.info[3]
+        if cls.is_bound:
+            return cls.binding[3]
+        else:
+            raise AttributeError('unbound type has no ieee_compliance')
 
 class AbstractFPVector(metaclass=AbstractFPVectorMeta):
     @property

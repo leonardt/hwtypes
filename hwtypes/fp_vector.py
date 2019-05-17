@@ -1,5 +1,6 @@
 import typing as tp
 import functools
+import random
 import gmpy2
 
 from .fp_vector_abc import AbstractFPVector, RoundingMode
@@ -16,7 +17,7 @@ _mode_2_gmpy2 = {
 def _coerce(T : tp.Type['FPVector'], val : tp.Any) -> 'FPVector':
     if not isinstance(val, FPVector):
         return T(val)
-    elif type(val).info != T.info:
+    elif type(val).binding != T.binding:
         raise TypeError('Inconsistent FP type')
     else:
         return val
@@ -31,44 +32,75 @@ def fp_cast(fn : tp.Callable[['FPVector', 'FPVector'], tp.Any]) -> tp.Callable[[
 def set_context(fn: tp.Callable) -> tp.Callable:
     @functools.wraps(fn)
     def wrapped(self : 'FPVector', *args, **kwargs):
-        with gmpy2.local_context(self._ctx):
+        with gmpy2.local_context(self._ctx_):
             return fn(self, *args, **kwargs)
     return wrapped
 
 class FPVector(AbstractFPVector):
+    @set_context
     def __init__(self, value):
-        cls = type(self)
-        if cls.ieee_compliance:
-            precision=cls.mantissa_size+1
-            emax=1<<(cls.exponent_size - 1)
-            emin=4-emax-precision
-            subnormalize=True
-        else:
-            precision=cls.mantissa_size+1
-            emax=1<<(cls.exponent_size - 1)
-            emin=3-emax
-            subnormalize=False
-
-        self._ctx = ctx = gmpy2.context(
-                precision=precision,
-                emin=emin,
-                emax=emax,
-                round=_mode_2_gmpy2[cls.mode],
-                subnormalize=cls.ieee_compliance,
-                allow_complex=False,
-        )
-
-
-        with gmpy2.local_context(ctx):
-            value = gmpy2.mpfr(value)
-            if gmpy2.is_nan(value) and not cls.ieee_compliance:
-                if gmpy2.is_signed(value):
-                    self._value = gmpy2.mpfr('-0')
-                else:
-                    self._value = gmpy2.mpfr('0')
-
+        value = gmpy2.mpfr(value)
+        if gmpy2.is_nan(value) and not type(self).ieee_compliance:
+            if gmpy2.is_signed(value):
+                self._value = gmpy2.mpfr('-inf')
             else:
-                self._value = value
+                self._value = gmpy2.mpfr('inf')
+
+        else:
+            self._value = value
+
+    @classmethod
+    def __init_subclass__(cls, **kwargs):
+        if cls.is_bound:
+            if cls.ieee_compliance:
+                precision=cls.mantissa_size+1
+                emax=1<<(cls.exponent_size - 1)
+                emin=4-emax-precision
+                subnormalize=True
+            else:
+                precision=cls.mantissa_size+1
+                emax=1<<(cls.exponent_size - 1)
+                emin=3-emax
+                subnormalize=False
+
+            ctx = gmpy2.context(
+                    precision=precision,
+                    emin=emin,
+                    emax=emax,
+                    round=_mode_2_gmpy2[cls.mode],
+                    subnormalize=cls.ieee_compliance,
+                    allow_complex=False,
+            )
+
+            if hasattr(cls, '_ctx_'):
+                c_ctx = cls._ctx_
+                if not isinstance(c_ctx, type(ctx)):
+                    raise TypeError('class attribute _ctx_ is reversed by FPVector')
+                #stupid compare because contexts aren't comparable
+                elif (c_ctx.precision != ctx.precision
+                        or c_ctx.real_prec != ctx.real_prec
+                        or c_ctx.imag_prec != ctx.imag_prec
+                        or c_ctx.round != ctx.round
+                        or c_ctx.real_round != ctx.real_round
+                        or c_ctx.imag_round != ctx.imag_round
+                        or c_ctx.emax != ctx.emax
+                        or c_ctx.emin != ctx.emin
+                        or c_ctx.subnormalize != ctx.subnormalize
+                        or c_ctx.trap_underflow != ctx.trap_underflow
+                        or c_ctx.trap_overflow != ctx.trap_overflow
+                        or c_ctx.trap_inexact != ctx.trap_inexact
+                        or c_ctx.trap_erange != ctx.trap_erange
+                        or c_ctx.trap_divzero != ctx.trap_divzero
+                        or c_ctx.trap_expbound != ctx.trap_expbound
+                        or c_ctx.allow_complex != ctx.allow_complex):
+                    # this basically should never happen unless some one does
+                    # class Foo(FPVector):
+                    #   _ctx_ = gmpy2.context(....)
+                    raise TypeError('Incompatible context types')
+
+            cls._ctx_ = ctx
+
+
 
     def __repr__(self):
         return f'{self._value}'
@@ -202,16 +234,26 @@ class FPVector(AbstractFPVector):
     @set_context
     def reinterpret_as_bv(self) -> BitVector:
         cls = type(self)
-        bias = (1 << (cls.exponent_size - 1)) - 1
-
         sign_bit = BitVector[1](gmpy2.is_signed(self._value))
+
+        if self.fp_is_zero():
+            return BitVector.concat(sign_bit, BitVector[cls.size-1](0))
+        elif self.fp_is_infinite():
+            exp_bits = BitVector[cls.exponent_size](-1)
+            mantissa_bits = BitVector[cls.mantissa_size](0)
+            return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
+        elif self.fp_is_NaN():
+            exp_bits = BitVector[cls.exponent_size](-1)
+            mantissa_bits = BitVector[cls.mantissa_size](1)
+            return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
+
+
+        bias = (1 << (cls.exponent_size - 1)) - 1
         v = self._value
 
         mantissa_int, exp =  v.as_mantissa_exp()
-        exp = exp + cls.mantissa_size
-        if mantissa_int == 0:
-            return BitVector.concat(sign_bit, BitVector[cls.size-1](0))
 
+        exp = exp + cls.mantissa_size
 
         if exp < 1-bias:
             #denorm
@@ -230,21 +272,24 @@ class FPVector(AbstractFPVector):
 
 
     @classmethod
+    @set_context
     def reinterpret_from_bv(cls, value: BitVector) -> 'FPVector':
         if cls.size != value.size:
             raise TypeError()
 
         mantissa = value[:cls.mantissa_size]
         exp      = value[cls.mantissa_size:-1]
-        sign     = value[-1]
+        sign     = value[-1:]
         assert exp.size == cls.exponent_size
+
+        bias = (1 << (cls.exponent_size - 1)) - 1
 
         if exp == 0:
             if mantissa != 0:
                 #denorm
                 assert cls.ieee_compliance
                 raise NotImplementedError()
-            elif sign:
+            elif sign[0]:
                 return cls('-0')
             else:
                 return cls('0')
@@ -254,14 +299,15 @@ class FPVector(AbstractFPVector):
                     return cls('-inf')
                 else:
                     return cls('inf')
-            else:
+            elif cls.ieee_compliance:
                 return cls('nan')
+            else:
+                raise ValueError("Can't construct NaN without ieee_compliance")
         else:
             #unbias the exponent
-            bias = (1 << (cls.exponent_size - 1)) - 1
             exp = exp - bias
 
-            s = ['-1.' if sign else '1.', mantissa.binary_string()]
+            s = ['-1.' if sign[0] else '1.', mantissa.binary_string()]
             s.append('e')
             s.append(str(exp.as_sint()))
             return cls(gmpy2.mpfr(''.join(s),cls.mantissa_size+1, 2))
@@ -285,3 +331,18 @@ class FPVector(AbstractFPVector):
     @set_context
     def __float__(self):
         return float(self._value)
+
+    @classmethod
+    @set_context
+    def random(cls, allow_inf=True) -> 'FPVector':
+        bias = (1 << (cls.exponent_size - 1)) - 1
+        if allow_inf:
+            sign = random.choice([-1, 1])
+            mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
+            exp = random.randint(1-bias, bias+1)
+            return cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
+        else:
+            sign = random.choice([-1, 1])
+            mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
+            exp = random.randint(1-bias, bias)
+            return cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))

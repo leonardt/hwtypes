@@ -3,8 +3,9 @@ import operator
 
 import ctypes
 import random
-from hwtypes import FPVector, RoundingMode
+from hwtypes import FPVector, RoundingMode,BitVector
 import math
+import gmpy2
 
 #A sort of reference vector to test against
 #Wraps either ctypes.c_float or ctypes.c_double
@@ -127,6 +128,50 @@ def _c_type_vector(T):
 NTESTS = 100
 
 @pytest.mark.parametrize("FT", [
+    FPVector[3, 1, RoundingMode.RNE, True],
+    FPVector[8, 7, RoundingMode.RNE, False],
+    FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, False],
+    ])
+@pytest.mark.parametrize("allow_inf", [False, True])
+def test_random(FT, allow_inf):
+    for _ in  range(NTESTS):
+        r = FT.random(allow_inf)
+        assert allow_inf or not r.fp_is_infinite()
+        assert not r.fp_is_NaN()
+
+@pytest.mark.parametrize("FT", [
+    FPVector[8, 7, RoundingMode.RNE, False],
+    FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, False],
+    ])
+def test_reinterpret(FT):
+    #basic sanity
+    for x in ('-2.0', '-1.75', '-1.5', '-1.25',
+              '-1.0', '-0.75', '-0.5', '-0.25',
+               '0.0',  '0.25',  '0.5',  '0.75',
+               '1.0',  '1.25',  '1.5',  '1.75',):
+        f1 = FT(x)
+        bv = f1.reinterpret_as_bv()
+        f2 = FT.reinterpret_from_bv(bv)
+        assert f1 == f2
+
+    #epsilon
+    f1 = FT(1)
+    while f1/2 != 0:
+        bv = f1.reinterpret_as_bv()
+        f2 = FT.reinterpret_from_bv(bv)
+        assert f1 == f2
+        f1 = f1/2
+
+    #using FPVector.random
+    for _ in range(NTESTS):
+        f1 = FT.random()
+        bv = f1.reinterpret_as_bv()
+        f2 = FT.reinterpret_from_bv(bv)
+        assert f1 == f2
+
+@pytest.mark.parametrize("FT", [
     FPVector[8, 7, RoundingMode.RNE, False],
     FPVector[8, 23, RoundingMode.RNE, False],
     FPVector[11, 52, RoundingMode.RNE, False],
@@ -140,29 +185,42 @@ NTESTS = 100
     (0, 2**16),
     (0, 2**64),
     ])
-def test_reinterpret(FT, mean, variance):
-    for x in ('-2.0', '-1.75', '-1.5', '-1.25',
-              '-1.0', '-0.75', '-0.5', '-0.25',
-               '0.0',  '0.25',  '0.5',  '0.75',
-               '1.0',  '1.25',  '1.5',  '1.75',):
-        f1 = FT(x)
-        bv = f1.reinterpret_as_bv()
-        f2 = FT.reinterpret_from_bv(bv)
-        assert f1 == f2
-
-    f1 = FT(1)
-    while f1/2 != 0:
-        bv = f1.reinterpret_as_bv()
-        f2 = FT.reinterpret_from_bv(bv)
-        f1 = f1/2
-
-
+def test_reinterpret_pyrandom(FT, mean, variance):
     for _ in range(NTESTS):
         x = random.normalvariate(mean, variance)
         f1 = FT(x)
         bv = f1.reinterpret_as_bv()
         f2 = FT.reinterpret_from_bv(bv)
         assert f1 == f2
+
+@pytest.mark.parametrize("FT", [
+    FPVector[8, 7, RoundingMode.RNE, False],
+    FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, False],
+    ])
+def test_reinterpret_bv(FT):
+    ms = FT.mantissa_size
+    for _ in range(NTESTS):
+        bv1 = BitVector.random(FT.size)
+        #dont generate denorms or NaN unless ieee compliant
+        while (not FT.ieee_compliance
+                and (bv1[ms:-1] == 0 or bv1[ms:-1] == -1)
+                and bv1[:ms] != 0):
+            bv1 = BitVector.random(FT.size)
+
+        f = FT.reinterpret_from_bv(bv1)
+        bv2 = f.reinterpret_as_bv()
+        if not f.fp_is_NaN():
+            assert bv1 == bv2
+        else:
+            #exponents should be -1
+            assert bv1[ms:-1] == BitVector[FT.exponent_size](-1)
+            assert bv2[ms:-1] == BitVector[FT.exponent_size](-1)
+            #mantissa should be non 0
+            assert bv1[:ms] != 0
+            assert bv2[:ms] != 0
+            #signs should match
+            assert bv1[-1] == bv2[-1]
 
 @pytest.mark.parametrize("CT, FT", [
     (_c_type_vector(ctypes.c_float), FPVector[8, 23, RoundingMode.RNE, True]),
