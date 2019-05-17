@@ -207,9 +207,8 @@ class FPVector(AbstractFPVector):
         sign_bit = BitVector[1](gmpy2.is_signed(self._value))
         v = self._value
 
-        mantissa_str, exp, _ = v.digits(2,cls.mantissa_size + 1)
-        exp = exp - 1
-        mantissa_int = int(mantissa_str, 2)
+        mantissa_int, exp =  v.as_mantissa_exp()
+        exp = exp + cls.mantissa_size
         if mantissa_int == 0:
             return BitVector.concat(sign_bit, BitVector[cls.size-1](0))
 
