@@ -115,49 +115,49 @@ class AbstractFPVector(metaclass=AbstractFPVectorMeta):
     def fp_neg(self) -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_add(self, other : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_add(self, other: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_sub(self, other : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_sub(self, other: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_mul(self, other : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_mul(self, other: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_div(self, other : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_div(self, other: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_fma(self, coef : 'AbstractFPVector', offset : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_fma(self, coef: 'AbstractFPVector', offset: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
     def fp_sqrt(self) -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_rem(self, other : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_rem(self, other: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
     def fp_round_to_integral(self) -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_min(self, other : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_min(self, other: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_max(self, other : 'AbstractFPVector') -> 'AbstractFPVector': pass
+    def fp_max(self, other: 'AbstractFPVector') -> 'AbstractFPVector': pass
 
     @abstractmethod
-    def fp_leq(self, other : 'AbstractFPVector') ->  AbstractBit: pass
+    def fp_leq(self, other: 'AbstractFPVector') ->  AbstractBit: pass
 
     @abstractmethod
-    def fp_lt(self, other : 'AbstractFPVector') ->  AbstractBit: pass
+    def fp_lt(self, other: 'AbstractFPVector') ->  AbstractBit: pass
 
     @abstractmethod
-    def fp_geq(self, other : 'AbstractFPVector') ->  AbstractBit: pass
+    def fp_geq(self, other: 'AbstractFPVector') ->  AbstractBit: pass
 
     @abstractmethod
-    def fp_gt(self, other : 'AbstractFPVector') ->  AbstractBit: pass
+    def fp_gt(self, other: 'AbstractFPVector') ->  AbstractBit: pass
 
     @abstractmethod
-    def fp_eq(self, other : 'AbstractFPVector') ->  AbstractBit: pass
+    def fp_eq(self, other: 'AbstractFPVector') ->  AbstractBit: pass
 
     @abstractmethod
     def fp_is_normal(self) -> AbstractBit: pass
@@ -188,3 +188,7 @@ class AbstractFPVector(metaclass=AbstractFPVectorMeta):
 
     @abstractmethod
     def reinterpret_as_bv(self) -> AbstractBitVector: pass
+
+    @classmethod
+    @abstractmethod
+    def reinterpret_from_bv(self, value: AbstractBitVector) -> 'AbstractFPVector': pass

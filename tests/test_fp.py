@@ -126,6 +126,44 @@ def _c_type_vector(T):
 
 NTESTS = 100
 
+@pytest.mark.parametrize("FT", [
+    FPVector[8, 7, RoundingMode.RNE, False],
+    FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, False],
+    ])
+@pytest.mark.parametrize("mean, variance", [
+    (0, 2**-64),
+    (0, 2**-16),
+    (0, 2**-4),
+    (0, 1),
+    (0, 2**4),
+    (0, 2**16),
+    (0, 2**64),
+    ])
+def test_reinterpret(FT, mean, variance):
+    for x in ('-2.0', '-1.75', '-1.5', '-1.25',
+              '-1.0', '-0.75', '-0.5', '-0.25',
+               '0.0',  '0.25',  '0.5',  '0.75',
+               '1.0',  '1.25',  '1.5',  '1.75',):
+        f1 = FT(x)
+        bv = f1.reinterpret_as_bv()
+        f2 = FT.reinterpret_from_bv(bv)
+        assert f1 == f2
+
+    f1 = FT(1)
+    while f1/2 != 0:
+        bv = f1.reinterpret_as_bv()
+        f2 = FT.reinterpret_from_bv(bv)
+        f1 = f1/2
+
+
+    for _ in range(NTESTS):
+        x = random.normalvariate(mean, variance)
+        f1 = FT(x)
+        bv = f1.reinterpret_as_bv()
+        f2 = FT.reinterpret_from_bv(bv)
+        assert f1 == f2
+
 @pytest.mark.parametrize("CT, FT", [
     (_c_type_vector(ctypes.c_float), FPVector[8, 23, RoundingMode.RNE, True]),
     (_c_type_vector(ctypes.c_double), FPVector[11, 52, RoundingMode.RNE, True]),])
@@ -142,7 +180,7 @@ def test_epsilon(CT, FT):
     assert (cx/c2).fp_is_zero()
     assert (fx/f2).fp_is_zero()
 
-@pytest.mark.parametrize("op", [operator.neg, operator.abs])
+@pytest.mark.parametrize("op", [operator.neg, operator.abs, lambda x : abs(x).fp_sqrt()])
 @pytest.mark.parametrize("CT, FT", [
     (_c_type_vector(ctypes.c_float), FPVector[8, 23, RoundingMode.RNE, True]),
     (_c_type_vector(ctypes.c_double), FPVector[11, 52, RoundingMode.RNE, True]),])

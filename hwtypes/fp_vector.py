@@ -40,12 +40,12 @@ class FPVector(AbstractFPVector):
         cls = type(self)
         if cls.ieee_compliance:
             precision=cls.mantissa_size+1
-            emax=2**(cls.exponent_size - 1)
+            emax=1<<(cls.exponent_size - 1)
             emin=4-emax-precision
             subnormalize=True
         else:
             precision=cls.mantissa_size+1
-            emax=2**(cls.exponent_size - 1)
+            emax=1<<(cls.exponent_size - 1)
             emin=3-emax
             subnormalize=False
 
@@ -57,6 +57,7 @@ class FPVector(AbstractFPVector):
                 subnormalize=cls.ieee_compliance,
                 allow_complex=False,
         )
+
 
         with gmpy2.local_context(ctx):
             value = gmpy2.mpfr(value)
@@ -198,8 +199,74 @@ class FPVector(AbstractFPVector):
     def to_sbv(self, size : int) -> SIntVector:
         return SIntVector[size](int(self._value))
 
+    @set_context
     def reinterpret_as_bv(self) -> BitVector:
-        raise NotImplementedError()
+        cls = type(self)
+        bias = (1 << (cls.exponent_size - 1)) - 1
+
+        sign_bit = BitVector[1](gmpy2.is_signed(self._value))
+        v = self._value
+
+        mantissa_str, exp, _ = v.digits(2,cls.mantissa_size + 1)
+        exp = exp - 1
+        mantissa_int = int(mantissa_str, 2)
+        if mantissa_int == 0:
+            return BitVector.concat(sign_bit, BitVector[cls.size-1](0))
+
+
+        if exp < 1-bias:
+            #denorm
+            assert cls.ieee_compliance
+            raise NotImplementedError()
+        else:
+            exp = exp + bias
+            assert exp.bit_length() <= cls.exponent_size
+            if sign_bit:
+                mantissa = -BitVector[cls.mantissa_size+1](mantissa_int)
+            else:
+                mantissa = BitVector[cls.mantissa_size+1](mantissa_int)
+            mantissa_bits = mantissa[:cls.mantissa_size]
+            exp_bits = BitVector[cls.exponent_size](exp)
+            return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
+
+
+    @classmethod
+    def reinterpret_from_bv(cls, value: BitVector) -> 'FPVector':
+        if cls.size != value.size:
+            raise TypeError()
+
+        mantissa = value[:cls.mantissa_size]
+        exp      = value[cls.mantissa_size:-1]
+        sign     = value[-1]
+        assert exp.size == cls.exponent_size
+
+        if exp == 0:
+            if mantissa != 0:
+                #denorm
+                assert cls.ieee_compliance
+                raise NotImplementedError()
+            elif sign:
+                return cls('-0')
+            else:
+                return cls('0')
+        elif exp == -1:
+            if mantissa == 0:
+                if sign:
+                    return cls('-inf')
+                else:
+                    return cls('inf')
+            else:
+                return cls('nan')
+        else:
+            #unbias the exponent
+            bias = (1 << (cls.exponent_size - 1)) - 1
+            exp = exp - bias
+
+            s = ['-1.' if sign else '1.', mantissa.binary_string()]
+            s.append('e')
+            s.append(str(exp.as_sint()))
+            return cls(gmpy2.mpfr(''.join(s),cls.mantissa_size+1, 2))
+
 
     def __neg__(self): return self.fp_neg()
     def __abs__(self): return self.fp_abs()
@@ -216,5 +283,6 @@ class FPVector(AbstractFPVector):
     def __le__(self, other): return self.fp_leq(other)
     def __lt__(self, other): return self.fp_lt(other)
 
+    @set_context
     def __float__(self):
         return float(self._value)
