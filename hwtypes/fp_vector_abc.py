@@ -31,6 +31,14 @@ class AbstractFPVectorMeta(ABCMeta):
 
         namespace['_info_'] = info[0], binding
         t = super().__new__(mcs, name, bases, namespace, **kwargs)
+
+        if binding is None:
+            #class is unbound so t.unbound_t -> t
+            t._info_ = t, binding
+        elif info[0] is None:
+            #class inherited from bound type so there is no unbound_t
+            t._info_ = None, binding
+
         return t
 
     def __getitem__(cls, idx : tp.Tuple[int, int, RoundingMode, bool]):
