@@ -6,6 +6,8 @@ import gmpy2
 from .fp_vector_abc import AbstractFPVector, RoundingMode
 from .bit_vector import Bit, BitVector, SIntVector
 
+__ALL__ = ['FPVector']
+
 _mode_2_gmpy2 = {
     RoundingMode.RNE : gmpy2.RoundToNearest,
     RoundingMode.RNA : gmpy2.RoundAwayZero,
