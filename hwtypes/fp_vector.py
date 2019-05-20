@@ -18,7 +18,7 @@ _mode_2_gmpy2 = {
 }
 
 def _coerce(T : tp.Type['FPVector'], val : tp.Any) -> 'FPVector':
-    if not isinstance(val, FPVector):
+    if not isinstance(val, T):
         return T(val)
     elif type(val).binding != T.binding:
         raise TypeError('Inconsistent FP type')

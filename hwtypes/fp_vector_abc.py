@@ -206,4 +206,4 @@ class AbstractFPVector(metaclass=AbstractFPVectorMeta):
 
     @classmethod
     @abstractmethod
-    def reinterpret_from_bv(self, value: AbstractBitVector) -> 'AbstractFPVector': pass
+    def reinterpret_from_bv(cls, value: AbstractBitVector) -> 'AbstractFPVector': pass
