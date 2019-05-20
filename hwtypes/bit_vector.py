@@ -105,6 +105,9 @@ class Bit(AbstractBit):
     def __bool__(self) -> bool:
         return self._value
 
+    def __int__(self) -> int:
+        return int(self._value)
+
     def __repr__(self) -> str:
         return 'Bit({})'.format(self._value)
 
