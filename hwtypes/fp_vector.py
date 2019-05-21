@@ -201,9 +201,9 @@ class FPVector(AbstractFPVector):
         bv = self.reinterpret_as_bv()
         if (bv[type(self).mantissa_size:-1] == 0) & ~self.fp_is_zero():
             assert type(self).ieee_compliance
-            return True
+            return Bit(True)
         else:
-            return False
+            return Bit(False)
 
 
     @set_context
