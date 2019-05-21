@@ -12,3 +12,9 @@ pip install hwtypes
 brew install gmp mpfr libmpc
 pip install hwtypes
 ```
+
+## CentOS
+```
+yum install libmpc-devel mpfr-devel gmp-devel
+pip install hwtypes
+```
