@@ -2,6 +2,7 @@ import typing as tp
 import functools
 import random
 import gmpy2
+import warnings
 
 from .fp_vector_abc import AbstractFPVector, RoundingMode
 from .bit_vector import Bit, BitVector, SIntVector
@@ -193,17 +194,17 @@ class FPVector(AbstractFPVector):
 
     @set_context
     def fp_is_normal(self) -> Bit:
-        if not type(self).ieee_compliance:
-            return Bit(True)
-        else:
-            raise NotImplementedError()
+        return ~(self.fp_is_zero() | self.fp_is_infinite() | self.fp_is_subnormal() | self.fp_is_NaN())
 
     @set_context
     def fp_is_subnormal(self) -> Bit:
-        if not type(self).ieee_compliance:
-            return Bit(False)
+        bv = self.reinterpret_as_bv()
+        if (bv[type(self).mantissa_size:-1] == 0) & ~self.fp_is_zero():
+            assert type(self).ieee_compliance
+            return True
         else:
-            raise NotImplementedError()
+            return False
+
 
     @set_context
     def fp_is_zero(self) -> Bit:
@@ -258,20 +259,26 @@ class FPVector(AbstractFPVector):
         exp = exp + cls.mantissa_size
 
         if exp < 1-bias:
-            #denorm
-            assert cls.ieee_compliance
-            raise NotImplementedError()
+            if not cls.ieee_compliance:
+                warnings.warn('denorm will be flushed to 0')
+                mantissa_int = 0
+            else:
+                while exp < 1 - bias:
+                    mantissa_int >>= 1
+                    exp += 1
+            exp = 0
         else:
             exp = exp + bias
-            assert exp.bit_length() <= cls.exponent_size
-            if sign_bit:
-                mantissa = -BitVector[cls.mantissa_size+1](mantissa_int)
-            else:
-                mantissa = BitVector[cls.mantissa_size+1](mantissa_int)
-            mantissa_bits = mantissa[:cls.mantissa_size]
-            exp_bits = BitVector[cls.exponent_size](exp)
-            return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
 
+        assert exp.bit_length() <= cls.exponent_size
+
+        if sign_bit:
+            mantissa = -BitVector[cls.mantissa_size+1](mantissa_int)
+        else:
+            mantissa = BitVector[cls.mantissa_size+1](mantissa_int)
+        exp_bits = BitVector[cls.exponent_size](exp)
+        mantissa_bits = mantissa[:cls.mantissa_size]
+        return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
 
     @classmethod
     @set_context
@@ -288,9 +295,18 @@ class FPVector(AbstractFPVector):
 
         if exp == 0:
             if mantissa != 0:
-                #denorm
-                assert cls.ieee_compliance
-                raise NotImplementedError()
+                if not cls.ieee_compliance:
+                    warnings.warn('denorm will be flushed to 0')
+                    if sign[0]:
+                        return cls('-0')
+                    else:
+                        return cls('0')
+                else:
+                    exp = 1 - bias
+                    s = ['-0.' if sign[0] else '0.', mantissa.binary_string()]
+                    s.append('e')
+                    s.append(str(exp))
+                    return cls(gmpy2.mpfr(''.join(s),cls.mantissa_size+1, 2))
             elif sign[0]:
                 return cls('-0')
             else:
@@ -301,10 +317,10 @@ class FPVector(AbstractFPVector):
                     return cls('-inf')
                 else:
                     return cls('inf')
-            elif cls.ieee_compliance:
-                return cls('nan')
             else:
-                raise ValueError("Can't construct NaN without ieee_compliance")
+                if not cls.ieee_compliance:
+                    warnings.warn('NaN will be flushed to infinity')
+                return cls('nan')
         else:
             #unbias the exponent
             exp = exp - bias

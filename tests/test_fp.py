@@ -128,9 +128,9 @@ def _c_type_vector(T):
 NTESTS = 100
 
 @pytest.mark.parametrize("FT", [
-    FPVector[3, 1, RoundingMode.RNE, True],
+    FPVector[8, 7, RoundingMode.RNE, True],
     FPVector[8, 7, RoundingMode.RNE, False],
-    FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, True],
     FPVector[11, 52, RoundingMode.RNE, False],
     ])
 @pytest.mark.parametrize("allow_inf", [False, True])
@@ -141,8 +141,9 @@ def test_random(FT, allow_inf):
         assert not r.fp_is_NaN()
 
 @pytest.mark.parametrize("FT", [
+    FPVector[8, 7, RoundingMode.RNE, True],
     FPVector[8, 7, RoundingMode.RNE, False],
-    FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, True],
     FPVector[11, 52, RoundingMode.RNE, False],
     ])
 def test_reinterpret(FT):
@@ -172,8 +173,9 @@ def test_reinterpret(FT):
         assert f1 == f2
 
 @pytest.mark.parametrize("FT", [
-    FPVector[8, 7, RoundingMode.RNE, False],
+    FPVector[8, 23, RoundingMode.RNE, True],
     FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, True],
     FPVector[11, 52, RoundingMode.RNE, False],
     ])
 @pytest.mark.parametrize("mean, variance", [
@@ -194,8 +196,9 @@ def test_reinterpret_pyrandom(FT, mean, variance):
         assert f1 == f2
 
 @pytest.mark.parametrize("FT", [
+    FPVector[8, 7, RoundingMode.RNE, True],
     FPVector[8, 7, RoundingMode.RNE, False],
-    FPVector[8, 23, RoundingMode.RNE, False],
+    FPVector[11, 52, RoundingMode.RNE, True],
     FPVector[11, 52, RoundingMode.RNE, False],
     ])
 def test_reinterpret_bv(FT):
@@ -219,8 +222,6 @@ def test_reinterpret_bv(FT):
             #mantissa should be non 0
             assert bv1[:ms] != 0
             assert bv2[:ms] != 0
-            #signs should match
-            assert bv1[-1] == bv2[-1]
 
 @pytest.mark.parametrize("CT, FT", [
     (_c_type_vector(ctypes.c_float), FPVector[8, 23, RoundingMode.RNE, True]),
