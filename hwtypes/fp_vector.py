@@ -42,9 +42,13 @@ def set_context(fn: tp.Callable) -> tp.Callable:
 class FPVector(AbstractFPVector):
     @set_context
     def __init__(self, value):
-        # Becaue for some reason gmpy2.mpfr is a function and not a type
+        # Because for some reason gmpy2.mpfr is a function and not a type
         if isinstance(value, type(gmpy2.mpfr(0))):
-            pass
+            #need to specify precision because mpfr will use the input
+            #precision not the context precision when constructing from mpfr
+            value = gmpy2.mpfr(value, self._ctx_.precision)
+        elif isinstance(value, FPVector):
+            value = gmpy2.mpfr(value._value, self._ctx_.precision)
         elif isinstance(value, (int, float, type(gmpy2.mpz(0)), type(gmpy2.mpq(0)))):
             value = gmpy2.mpfr(value)
         elif isinstance(value, str):
@@ -63,7 +67,7 @@ class FPVector(AbstractFPVector):
             value = gmpy2.mpfr(int(value))
         else:
             try:
-                #if gmpy2 doesnt complain I wont
+                #if gmpy2 doesn't complain I wont
                 value = gmpy2.mpfr(value)
             except TypeError:
                 raise TypeError(f"Can't construct FPVector from {type(value)}")
