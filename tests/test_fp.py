@@ -127,6 +127,30 @@ def _c_type_vector(T):
 
 NTESTS = 100
 
+@pytest.mark.parametrize("mode", [
+    RoundingMode.RNE,
+    RoundingMode.RNA,
+    RoundingMode.RTP,
+    RoundingMode.RTN,
+    RoundingMode.RTZ,
+    ])
+@pytest.mark.parametrize("ieee", [False, True])
+def test_init(mode, ieee):
+    BigFloat = FPVector[27,100, mode, ieee]
+    class F:
+        def __float__(self):
+            return 0.5
+
+    class I:
+        def __int__(self):
+            return 1
+
+    assert BigFloat(0.5) == BigFloat(F())
+    assert BigFloat(1) == BigFloat(I())
+    assert BigFloat(0.5) == BigFloat('0.5')
+    assert BigFloat('1/3') == BigFloat(1)/BigFloat(3)
+    assert BigFloat('1/3') != BigFloat(1/3) # as 1/3 is performed in python floats
+
 @pytest.mark.parametrize("FT", [
     FPVector[8, 7, RoundingMode.RNE, True],
     FPVector[8, 7, RoundingMode.RNE, False],
