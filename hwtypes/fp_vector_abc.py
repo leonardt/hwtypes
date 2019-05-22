@@ -2,16 +2,16 @@ from abc import ABCMeta, abstractmethod
 import typing as tp
 import weakref
 import warnings
-from enum import Enum, auto
+import enum
 
 from . import AbstractBitVectorMeta, AbstractBitVector, AbstractBit
 
-class RoundingMode(Enum):
-    RNE = auto() # roundTiesToEven
-    RNA = auto() # roundTiesToAway
-    RTP = auto() # roundTowardPositive
-    RTN = auto() # roundTowardNegative
-    RTZ = auto() # roundTowardZero
+class RoundingMode(enum.Enum):
+    RNE = enum.auto() # roundTiesToEven
+    RNA = enum.auto() # roundTiesToAway
+    RTP = enum.auto() # roundTowardPositive
+    RTN = enum.auto() # roundTowardNegative
+    RTZ = enum.auto() # roundTowardZero
 
 class AbstractFPVectorMeta(ABCMeta):
     # FPVectorType, (eb, mb, mode, ieee_compliance) :  FPVectorType[eb, mb, mode, ieee_compliance]
