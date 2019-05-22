@@ -2,22 +2,10 @@ from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta, is_adt_type
 from types import MappingProxyType
 
 __all__  = ['Tuple', 'Product', 'Sum', 'Enum']
-__all__ += ['new', 'new_instruction', 'is_adt_type']
+__all__ += ['new_instruction', 'is_adt_type']
 
 #special sentinal value
 class _MISSING: pass
-
-def new(klass, bind=_MISSING, *, name=_MISSING, module=_MISSING):
-    class T(klass): pass
-    if name is not _MISSING:
-        T.__name__ = name
-    if module is not _MISSING:
-        T.__module__ = module
-
-    if bind is not _MISSING:
-        return T[bind]
-    else:
-        return T
 
 class Tuple(metaclass=TupleMeta):
     def __new__(cls, *value):
