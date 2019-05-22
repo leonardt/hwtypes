@@ -1,5 +1,6 @@
 import pytest
-from hwtypes.adt import Product, Sum, Enum, Tuple, new
+from hwtypes.adt import Product, Sum, Enum, Tuple
+from hwtypes.modifiers import new
 
 class En(Enum):
     a = 0
@@ -125,7 +126,7 @@ def test_new():
     t = new(Sum, (En, Pr))
     assert t is not Su
     assert Sum[En, Pr] is Su
-    assert t.__module__ == 'hwtypes.adt'
+    assert t.__module__ == 'hwtypes.modifiers'
 
     t = new(Sum, (En, Pr), module=__name__)
     assert t.__module__ == __name__
