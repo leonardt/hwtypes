@@ -2,113 +2,122 @@ import pytest
 from hwtypes.adt import Product, Sum, Enum, Tuple
 from hwtypes.modifiers import new
 
-class En(Enum):
+class En1(Enum):
     a = 0
     b = 1
 
+class En2(Enum):
+    c = 0
+    d = 1
+
 class Pr(Product):
-    x = En
-    y = En
+    x = En1
+    y = En2
 
-Su = Sum[En, Pr]
+Su = Sum[En1, Pr]
 
-Tu = Tuple[En, En]
+Tu = Tuple[En1, En2]
 
 def test_enum():
-    assert set(En.enumerate()) == {
-            En.a,
-            En.b,
+    assert set(En1.enumerate()) == {
+            En1.a,
+            En1.b,
     }
 
-    assert En.a.value == 0
-    assert En.a is En.a
+    assert En1.a.value == 0
+    assert En1.a is En1.a
 
-    assert issubclass(En, Enum)
-    assert isinstance(En.a, Enum)
-    assert isinstance(En.a, En)
+    assert issubclass(En1, Enum)
+    assert isinstance(En1.a, Enum)
+    assert isinstance(En1.a, En1)
 
 def test_tuple():
     assert set(Tu.enumerate()) == {
-            Tu(En.a, En.a),
-            Tu(En.a, En.b),
-            Tu(En.b, En.a),
-            Tu(En.b, En.b),
+            Tu(En1.a, En2.c),
+            Tu(En1.a, En2.d),
+            Tu(En1.b, En2.c),
+            Tu(En1.b, En2.d),
     }
 
-    assert Tu(En.a, En.a).value == (En.a, En.a)
+    assert Tu(En1.a, En2.c).value == (En1.a, En2.c)
 
     assert issubclass(Tu, Tuple)
-    assert isinstance(Tu(En.a, En.a), Tuple)
-    assert isinstance(Tu(En.a, En.a), Tu)
+    assert isinstance(Tu(En1.a, En2.c), Tuple)
+    assert isinstance(Tu(En1.a, En2.c), Tu)
 
-    t = Tu(En.a, En.b)
-    assert (t[0],t[1]) == (En.a,En.b)
-    t[0] = En.b
-    assert (t[0],t[1]) == (En.b,En.b)
+    t = Tu(En1.a, En2.c)
+    assert (t[0],t[1]) == (En1.a,En2.c)
+    t[0] = En1.b
+    assert (t[0],t[1]) == (En1.b,En2.c)
 
     with pytest.raises(TypeError):
-        Tu(En.a, 1)
+        Tu(En1.a, 1)
 
     with pytest.raises(TypeError):
         t[1] = 1
 
 def test_product():
     assert set(Pr.enumerate()) == {
-            Pr(En.a, En.a),
-            Pr(En.a, En.b),
-            Pr(En.b, En.a),
-            Pr(En.b, En.b),
+            Pr(En1.a, En2.c),
+            Pr(En1.a, En2.d),
+            Pr(En1.b, En2.c),
+            Pr(En1.b, En2.d),
     }
 
-    assert Pr(En.a, En.a).value == (En.a, En.a)
+    assert Pr(En1.a, En2.c).value == (En1.a, En2.c)
 
     assert issubclass(Pr, Product)
-    assert isinstance(Pr(En.a, En.a), Product)
-    assert isinstance(Pr(En.a, En.a), Pr)
+    assert isinstance(Pr(En1.a, En2.c), Product)
+    assert isinstance(Pr(En1.a, En2.c), Pr)
 
-    assert Pr(En.a, En.b) == Tu(En.a, En.b)
+    assert Pr(En1.a, En2.c) == Tu(En1.a, En2.c)
     assert issubclass(Pr, Tu)
     assert issubclass(Pr, Tuple)
-    assert isinstance(Pr(En.a, En.b), Tu)
+    assert isinstance(Pr(En1.a, En2.c), Tu)
 
-    assert Pr[0] == Pr.x == En
-    assert Pr[1] == Pr.y == En
+    assert Pr[0] == Pr.x == En1
+    assert Pr[1] == Pr.y == En2
 
-    assert Pr.field_dict == {'x' : En, 'y' : En }
-    assert Pr(En.b, En.a).value_dict == {'x' : En.b, 'y' : En.a}
+    p = Pr(En1.a, En2.c)
+    assert p[0] == p.x == En1.a
+    assert p[1] == p.y == En2.c
 
-    p = Pr(En.a, En.b)
-    assert p[0] == p.x == En.a
-    assert p[1] == p.y == En.b
-    p.x = En.b
-    assert p[0] == p.x == En.b
-    p[0] = En.a
-    assert p[0] == p.x == En.a
+    assert Pr.field_dict == {'x' : En1, 'y' : En2 }
+    assert Pr(En1.b, En2.c).value_dict == {'x' : En1.b, 'y' : En2.c}
+
+    p = Pr(En1.a, En2.c)
+    assert p[0] == p.x == En1.a
+    assert p[1] == p.y == En2.c
+    p.x = En1.b
+    assert p[0] == p.x == En1.b
+    p[0] = En1.a
+    assert p[0] == p.x == En1.a
 
     with pytest.raises(TypeError):
-        Pr(En.a, 1)
+        Pr(En1.a, En1.a)
 
     with pytest.raises(TypeError):
-        p[0] = 1
+        p[0] = En2.c
+
 
 def test_sum():
     assert set(Su.enumerate()) == {
-            Su(En.a),
-            Su(En.b),
-            Su(Pr(En.a, En.a)),
-            Su(Pr(En.a, En.b)),
-            Su(Pr(En.b, En.a)),
-            Su(Pr(En.b, En.b)),
+            Su(En1.a),
+            Su(En1.b),
+            Su(Pr(En1.a, En2.c)),
+            Su(Pr(En1.a, En2.d)),
+            Su(Pr(En1.b, En2.c)),
+            Su(Pr(En1.b, En2.d)),
     }
 
-    assert Su(En.a).value == En.a
+    assert Su(En1.a).value == En1.a
 
     assert issubclass(Su, Sum)
-    assert isinstance(Su(En.a), Su)
-    assert isinstance(Su(En.a), Sum)
+    assert isinstance(Su(En1.a), Su)
+    assert isinstance(Su(En1.a), Sum)
 
-    assert Su.field_dict == {'En' : En, 'Pr' : Pr}
-    assert Su(En.a).value_dict == {'En' : En.a, 'Pr' : None}
+    assert Su.field_dict == {'En1' : En1, 'Pr' : Pr}
+    assert Su(En1.a).value_dict == {'En1' : En1.a, 'Pr' : None}
 
     with pytest.raises(TypeError):
         Su(1)
@@ -118,15 +127,15 @@ def test_new():
     t = new(Tuple)
     s = new(Tuple)
     assert issubclass(t, Tuple)
-    assert issubclass(t[En], t)
-    assert issubclass(t[En], Tuple[En])
+    assert issubclass(t[En1], t)
+    assert issubclass(t[En1], Tuple[En1])
     assert t is not Tuple
     assert s is not t
 
-    t = new(Sum, (En, Pr))
+    t = new(Sum, (En1, Pr))
     assert t is not Su
-    assert Sum[En, Pr] is Su
+    assert Sum[En1, Pr] is Su
     assert t.__module__ == 'hwtypes.modifiers'
 
-    t = new(Sum, (En, Pr), module=__name__)
+    t = new(Sum, (En1, Pr), module=__name__)
     assert t.__module__ == __name__
