@@ -3,7 +3,7 @@ import typing as tp
 
 import weakref
 
-from types import MappingProxyType, resolve_bases
+from types import MappingProxyType
 from collections.abc import Mapping, MutableMapping
 from .util import TypedProperty
 
@@ -88,7 +88,7 @@ class BoundMeta(type):
             if '_fields_cb' in namespace:
                 bound_types  = namespace['_fields_cb'](bound_types)
             else:
-                for t in resolve_bases(bases):
+                for t in bases:
                     if hasattr(t, '_fields_cb'):
                         bound_types = t._fields_cb(bound_types)
 
