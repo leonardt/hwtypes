@@ -9,12 +9,14 @@ python:
 - '3.6'
 install:
 - pip install -r requirements.txt
+- pip install python-coveralls
 - pip install pytest-cov
 - pip install -e .
 jobs:
   include:
   - stage: test
     script: py.test --cov=hwtypes tests/
+    after_success: coveralls
   - stage: deploy
     script: skip
     deploy: &pypi
