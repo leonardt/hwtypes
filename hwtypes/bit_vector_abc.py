@@ -15,9 +15,6 @@ class AbstractBitVectorMeta(ABCMeta):
     # BitVectorType, size :  BitVectorType[size]
     _class_cache = weakref.WeakValueDictionary()
 
-    # BitVectorType : UnsizedBitVectorType, size
-    _class_info  = weakref.WeakKeyDictionary()
-
     def __call__(cls, value=_MISSING, size=_MISSING, *args, **kwargs):
         if cls.is_sized and size is not _MISSING:
             raise TypeError('Cannot use old style construction on sized types')
@@ -50,8 +47,11 @@ class AbstractBitVectorMeta(ABCMeta):
         return type(cls).__call__(cls[size], value)
 
 
-    def __new__(mcs, name, bases, namespace, **kwargs):
-        size = None
+    def __new__(mcs, name, bases, namespace, info=(None, None), **kwargs):
+        if '_info_' in namespace:
+            raise TypeError('class attribute _info_ is reversed by the type machinery')
+
+        size = info[1]
         for base in bases:
             if getattr(base, 'is_sized', False):
                 if size is None:
@@ -59,11 +59,14 @@ class AbstractBitVectorMeta(ABCMeta):
                 elif size != base.size:
                     raise TypeError("Can't inherit from multiple different sizes")
 
+        namespace['_info_'] = info[0], size
         t = super().__new__(mcs, name, bases, namespace, **kwargs)
         if size is None:
-            mcs._class_info[t] = t, size
-        else:
-            mcs._class_info[t] = None, size
+            #class is unsized so t.unsized_t -> t
+            t._info_ = t, size
+        elif info[0] is None:
+            #class inherited from sized types so there is no unsized_t
+            t._info_ = None, size
 
         return t
 
@@ -87,15 +90,14 @@ class AbstractBitVectorMeta(ABCMeta):
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, mcs))
         bases = tuple(bases)
         class_name = '{}[{}]'.format(cls.__name__, idx)
-        t = mcs(class_name, bases, {})
+        t = mcs(class_name, bases, {}, info=(cls,idx))
         t.__module__ = cls.__module__
         mcs._class_cache[cls, idx] = t
-        mcs._class_info[t] = cls, idx
         return t
 
     @property
     def unsized_t(cls) -> 'AbstractBitVectorMeta':
-        t = type(cls)._class_info[cls][0]
+        t = cls._info_[0]
         if t is not None:
             return t
         else:
@@ -103,11 +105,11 @@ class AbstractBitVectorMeta(ABCMeta):
 
     @property
     def size(cls) -> int:
-        return type(cls)._class_info[cls][1]
+        return cls._info_[1]
 
     @property
     def is_sized(cls) -> bool:
-        return type(cls)._class_info[cls][1] is not None
+        return cls.size is not None
 
 class AbstractBit(metaclass=ABCMeta):
     @staticmethod

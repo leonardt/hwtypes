@@ -5,6 +5,7 @@ import weakref
 
 from types import MappingProxyType
 from collections.abc import Mapping, MutableMapping
+from .util import TypedProperty
 
 __all__ = ['BoundMeta', 'TupleMeta', 'ProductMeta', 'SumMeta', 'EnumMeta']
 
@@ -54,9 +55,6 @@ def is_adt_type(t):
 class BoundMeta(type):
     # (UnboundType, (types...)) : BoundType
     _class_cache = weakref.WeakValueDictionary()
-    # BoundType : (types...)
-    # UnboundType : None
-    _class_info  = weakref.WeakKeyDictionary()
 
     def __call__(cls, *args, **kwargs):
         if not cls.is_bound:
@@ -73,8 +71,11 @@ class BoundMeta(type):
             return obj
         return super().__call__(*args, **kwargs)
 
-    def __new__(mcs, name, bases, namespace, **kwargs):
-        bound_types = None
+    def __new__(mcs, name, bases, namespace, fields=None, **kwargs):
+        if '_fields_' in namespace:
+            raise TypeError('class attribute _fields_ is reversed by the type machinery')
+
+        bound_types = fields
         for base in bases:
             if isinstance(base, BoundMeta) and base.is_bound:
                 if bound_types is None:
@@ -83,12 +84,16 @@ class BoundMeta(type):
                     raise TypeError("Can't inherit from multiple different bound_types")
 
 
-        t = super().__new__(mcs, name, bases, namespace, **kwargs)
         if bound_types is not None:
-            bound_types = t._fields_cb(bound_types)
+            if '_fields_cb' in namespace:
+                bound_types  = namespace['_fields_cb'](bound_types)
+            else:
+                for t in bases:
+                    if hasattr(t, '_fields_cb'):
+                        bound_types = t._fields_cb(bound_types)
 
-        mcs._class_info[t] = bound_types
-
+        namespace['_fields_'] = bound_types
+        t = super().__new__(mcs, name, bases, namespace, **kwargs)
         return t
 
 
@@ -117,19 +122,18 @@ class BoundMeta(type):
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, BoundMeta))
         bases = tuple(bases)
         class_name = '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
-        t = type(cls)(class_name, bases, {})
+        t = type(cls)(class_name, bases, {}, fields=idx)
         t.__module__ = cls.__module__
         BoundMeta._class_cache[cls, idx] = t
-        BoundMeta._class_info[t] = idx
         return t
 
     @property
     def fields(cls):
-        return BoundMeta._class_info[cls]
+        return cls._fields_
 
     @property
     def is_bound(cls) -> bool:
-        return BoundMeta._class_info[cls] is not None
+        return cls.fields is not None
 
     def __repr__(cls):
         return f"{cls.__name__}"
@@ -153,9 +157,6 @@ class TupleMeta(BoundMeta):
             yield cls(*args)
 
 class ProductMeta(TupleMeta):
-    # ProductType : (FieldName : FieldType)
-    _field_table = weakref.WeakKeyDictionary()
-
     def __new__(mcs, name, bases, namespace, **kwargs):
         fields = {}
         ns = {}
@@ -182,6 +183,13 @@ class ProductMeta(TupleMeta):
 
     @classmethod
     def from_fields(mcs, fields, name, bases, ns, **kwargs):
+        # not strictly necesarry could iterative over class dict finding
+        # TypedProperty to reconstuct _field_table_ but that seems bad
+        if '_field_table_' in ns:
+            raise TypeError('class attribute _field_table_ is reversed by the type machinery')
+        else:
+            ns['_field_table_'] = dict()
+
         def _get_tuple_base(bases):
             for base in bases:
                 if not isinstance(base, ProductMeta) and isinstance(base, TupleMeta):
@@ -193,9 +201,32 @@ class ProductMeta(TupleMeta):
 
         base = _get_tuple_base(bases)[tuple(fields.values())]
         bases = *bases, base
-        #this is all realy gross but I don't know how to do this cleanly
 
-        #need to build t so I can call super()
+        #field_name -> tuple index
+        idx_table = dict((k, i) for i,k in enumerate(fields.keys()))
+
+        def _make_prop(field_type, idx):
+            @TypedProperty(field_type)
+            def prop(self):
+                return self[idx]
+
+            @prop.setter
+            def prop(self, value):
+                self[idx] = value
+
+            return prop
+
+        #add properties to namespace
+        #build properties
+        for field_name, field_type in fields.items():
+            assert field_name not in ns
+            idx = idx_table[field_name]
+            ns['_field_table_'][field_name] = field_type
+            ns[field_name] = _make_prop(field_type, idx)
+
+        #this is all realy gross but I don't know how to do this cleanly
+        #need to build t so I can call super() in new and init
+        #need to exec to get proper signatures
         t = super().__new__(mcs, name, bases, ns, **kwargs)
         gs = {name : t, 'ProductMeta' : ProductMeta}
         ls = {}
@@ -219,32 +250,10 @@ def __init__(self, {type_sig}):
         exec(__init__, gs, ls)
         t.__init__ = ls['__init__']
 
-        idx_table = dict((k, i) for i,k in enumerate(fields.keys()))
-
-        #build properties
-        for field_name in fields.keys():
-            prop = f'''
-@property
-def {field_name}(self):
-    return self[{idx_table[field_name]}]
-
-@{field_name}.setter
-def {field_name}(self, value):
-    self[{idx_table[field_name]}] = value
-'''
-            exec(prop, gs, ls)
-            setattr(t, field_name, ls[field_name])
 
         #Store the field indexs
-        mcs._field_table[t] = _key_map_dict(idx_table, t)
         return t
 
-    def __getattribute__(cls, name):
-        try:
-            return type(cls)._field_table[cls][name]
-        except KeyError:
-            pass
-        return super().__getattribute__(name)
 
     def __getitem__(cls, idx):
         if cls.is_bound:
@@ -261,7 +270,7 @@ def {field_name}(self, value):
 
     @property
     def field_dict(cls):
-        return MappingProxyType(type(cls)._field_table[cls])
+        return MappingProxyType(cls._field_table_)
 
 
 class SumMeta(BoundMeta):
@@ -281,14 +290,14 @@ class SumMeta(BoundMeta):
 
 
 class EnumMeta(BoundMeta):
-    # EnumType : (ElemName : Elem)
-    _elem_name_table = weakref.WeakKeyDictionary()
-
     class Auto:
         def __repr__(self):
             return 'Auto()'
 
     def __new__(mcs, cls_name, bases, namespace, **kwargs):
+        if '_field_table_' in namespace:
+            raise TypeError('class attribute _field_table_ is reversed by the type machinery')
+
         elems = {}
         ns = {}
 
@@ -300,21 +309,20 @@ class EnumMeta(BoundMeta):
             else:
                 raise TypeError(f'Enum value should be int not {type(v)}')
 
+        ns['_field_table_'] = name_table = dict()
         t = super().__new__(mcs, cls_name, bases, ns, **kwargs)
 
         if not elems:
             return t
-
-
-        mcs._elem_name_table[t] = name_table = {}
 
         for name, value in elems.items():
             elem = t.__new__(t)
             elem.__init__(value)
             setattr(elem, '_name_', name)
             name_table[name] = elem
+            setattr(t, name, elem)
 
-        super()._class_info[t] = tuple(name_table.values())
+        t._fields_ = tuple(name_table.values())
 
         return t
 
@@ -323,16 +331,9 @@ class EnumMeta(BoundMeta):
             raise TypeError('Enums cannot be constructed by value')
         return elem
 
-    def __getattribute__(cls, name):
-        try:
-            return type(cls)._elem_name_table[cls][name]
-        except KeyError:
-            pass
-        return super().__getattribute__(name)
-
     @property
     def field_dict(cls):
-        return MappingProxyType(type(cls)._elem_name_table[cls])
+        return MappingProxyType(cls._field_table_)
 
     def enumerate(cls):
         yield from cls.fields
