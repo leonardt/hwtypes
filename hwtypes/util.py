@@ -25,8 +25,12 @@ class TypedProperty:
             @A.foo.setter #works
 
         class D(B):
-            @B.foo.setter #error
-        '''
+            @B.foo.setter #error unless T has atrribute setter in which case
+                          #T.setter is called for the decorator as B.Foo -> T.
+                          #In generalTypedProperty objects must not be modified
+                          #outside of the class in which they are declared
+
+    '''
     def __init__(self, T):
         self.T = T
         self.final = False
@@ -78,22 +82,3 @@ class TypedProperty:
 
     def deleter(self, fdel):
         return type(self)(self.T)(self.fget, self.fset, fdel, self.__doc__)
-
-
-#class A:
-#    def __init__(self, a):
-#        self._a = a
-#
-#    @TypedProperty(int)
-#    def a(self):
-#        return self._a
-#
-##class B(A):
-##    @A.a.setter
-##    def a(self, a):
-##        self._a = a
-##
-#print(A.a)
-#a = A(1)
-##b = B(2)
-##b.a = 3
