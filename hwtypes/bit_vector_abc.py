@@ -111,6 +111,13 @@ class AbstractBitVectorMeta(ABCMeta):
     def is_sized(cls) -> bool:
         return cls.size is not None
 
+    def __len__(cls):
+        if cls.is_sized:
+            return cls.size
+        else:
+            raise AttributeError('unsized type has no len')
+
+
 class AbstractBit(metaclass=ABCMeta):
     @staticmethod
     def get_family() -> TypeFamily:
