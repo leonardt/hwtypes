@@ -70,6 +70,9 @@ class z3Bit(AbstractBit):
             name = _gen_name()
             _name_table[name] = self
 
+        if isinstance(value, z3.ExprRef):
+            value = z3.simplify(value)
+
         if value is SMYBOLIC:
             self._value = z3.Bool(name)
         elif isinstance(value, z3.BoolRef):
@@ -149,7 +152,6 @@ class z3Bit(AbstractBit):
 
             T = type(t_branch)
 
-
         return T(z3.If(self.value, t_branch.value, f_branch.value))
 
 def _coerce(T : tp.Type['z3BitVector'], val : tp.Any) -> 'z3BitVector':
@@ -194,6 +196,9 @@ class z3BitVector(AbstractBitVector):
             name = _gen_name()
             _name_table[name] = self
         self._name = name
+
+        if isinstance(value, z3.ExprRef):
+            value = z3.simplify(value)
 
         T = z3.BitVecSort(self.size)
 
@@ -489,8 +494,6 @@ class z3BitVector(AbstractBitVector):
     __le__ = bvule
     __lt__ = bvult
 
-
-
     @int_cast
     def repeat(self, n):
         return type(self)(z3.RepeatBitVec(n, self.value))
@@ -510,23 +513,8 @@ class z3BitVector(AbstractBitVector):
             raise ValueError()
         return type(self).unsized_t[self.size + ext](z3.ZeroExt(ext, self.value))
 
-# Used in testing
-#    def bits(self):
-#        return [(self >> i) & 1 for i in range(self.size)]
-#
-#    def __int__(self):
-#        return self.as_uint()
-#
-#    def as_uint(self):
-#        return self._value.as_long()
-#
-#    def as_sint(self):
-#        return self._value.as_signed_long()
-#
-#    @classmethod
-#    def random(cls, width):
-#        return cls.unsized_t[width](random.randint(0, (1 << width) - 1))
-#
+    def __repr__(self):
+        return f'{type(self)}({self._value})'
 
 class z3NumVector(z3BitVector):
     pass

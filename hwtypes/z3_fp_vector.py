@@ -92,6 +92,9 @@ class z3FPVector(AbstractFPVector):
         sort = cls._get_sort()
         mode = cls._get_mode()
 
+        if isinstance(value, z3.ExprRef):
+            value = z3.simplify(value)
+
         if value is SMYBOLIC:
             value = z3.FP(name, sort)
         elif isinstance(value, z3.FPRef):
@@ -126,8 +129,10 @@ class z3FPVector(AbstractFPVector):
                         )
                     )
 
+        value = z3.simplify(value)
+
         self._name = name
-        self._value = z3.simplify(value)
+        self._value = value
 
     def fp_abs(self) -> 'z3FPVector':
         return type(self)(z3.fpAbs(self._value))
@@ -190,7 +195,7 @@ class z3FPVector(AbstractFPVector):
 
     @fp_cast
     def fp_gt(self, other: 'z3FPVector') ->  z3Bit:
-        return z3Bit(z3.fpLEQ(self._value, other._value))
+        return z3Bit(z3.fpGT(self._value, other._value))
 
     @fp_cast
     def fp_eq(self, other: 'z3FPVector') ->  z3Bit:
@@ -224,10 +229,15 @@ class z3FPVector(AbstractFPVector):
         return z3BitVector(z3.fpToSBV(self._get_mode(), self._value, z3.BitVecSort(size)))
 
     def reinterpret_as_bv(self) -> z3BitVector:
-        return z3BitVector(z3.fpToIEEEBV(self._get_mode(), self._value, z3.BitVecSort(size)))
+        return z3BitVector[type(self).size](z3.fpToIEEEBV(self._value))
 
     @classmethod
     def reinterpret_from_bv(cls, value: AbstractBitVector) -> 'z3FPVector':
+        #value = z3BitVector[value.size](value)
+        #mantissa = value[:cls.mantissa_size]
+        #exp      = value[cls.mantissa_size:-1]
+        #sign     = value[-1:]
+        #return cls(z3.fpFP(sign._value,exp._value,mantissa._value))
         return cls(z3.fpBVToFP(z3BitVector[cls.size](value)._value, cls._get_sort()))
 
     def __neg__(self): return self.fp_neg()
@@ -244,4 +254,7 @@ class z3FPVector(AbstractFPVector):
     def __gt__(self, other): return self.fp_gt(other)
     def __le__(self, other): return self.fp_leq(other)
     def __lt__(self, other): return self.fp_lt(other)
+
+    def __repr__(self):
+        return f'{type(self)}({self._value.as_string()})'
 
