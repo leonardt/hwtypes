@@ -269,15 +269,15 @@ class FPVector(AbstractFPVector):
         sign_bit = BitVector[1](gmpy2.is_signed(self._value))
 
         if self.fp_is_zero():
-            return BitVector.concat(sign_bit, BitVector[cls.size-1](0))
+            return BitVector[cls.size-1](0).concat(sign_bit)
         elif self.fp_is_infinite():
             exp_bits = BitVector[cls.exponent_size](-1)
             mantissa_bits = BitVector[cls.mantissa_size](0)
-            return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
+            return mantissa_bits.concat(exp_bits).concat(sign_bit)
         elif self.fp_is_NaN():
             exp_bits = BitVector[cls.exponent_size](-1)
             mantissa_bits = BitVector[cls.mantissa_size](1)
-            return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
+            return mantissa_bits.concat(exp_bits).concat(sign_bit)
 
 
         bias = (1 << (cls.exponent_size - 1)) - 1
@@ -307,7 +307,7 @@ class FPVector(AbstractFPVector):
             mantissa = BitVector[cls.mantissa_size+1](mantissa_int)
         exp_bits = BitVector[cls.exponent_size](exp)
         mantissa_bits = mantissa[:cls.mantissa_size]
-        return BitVector.concat(BitVector.concat(sign_bit, exp_bits), mantissa_bits)
+        return mantissa_bits.concat(exp_bits).concat(sign_bit)
 
     @classmethod
     @set_context

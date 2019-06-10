@@ -231,7 +231,7 @@ class SMTBitVector(AbstractBitVector):
                 raise ValueError('Iterable is not the correct size')
             cls = type(self)
             B1 = cls.unsized_t[1]
-            self._value = ft.reduce(cls.concat, map(B1, reversed(value))).value
+            self._value = ft.reduce(lambda acc, elem : acc.concat(elem), map(B1, value)).value
         elif isinstance(value, int):
             self._value =  smt.BV(value % (1 << self.size), self.size)
 
@@ -320,9 +320,11 @@ class SMTBitVector(AbstractBitVector):
     def __len__(self):
         return self.size
 
-    @classmethod
-    def concat(cls, x, y):
-        return cls.unsized_t[x.size + y.size](smt.BVConcat(x.value, y.value))
+    def concat(self, other):
+        T = type(self).unsized_t
+        if not isinstance(other, T):
+            raise TypeError(f'value must of type {T}')
+        return T[x.size + other.size](smt.BVConcat(other.value, self.value))
 
     def bvnot(self):
         return type(self)(smt.BVNot(self.value))
