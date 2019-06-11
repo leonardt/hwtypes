@@ -324,7 +324,7 @@ class SMTBitVector(AbstractBitVector):
         T = type(self).unsized_t
         if not isinstance(other, T):
             raise TypeError(f'value must of type {T}')
-        return T[x.size + other.size](smt.BVConcat(other.value, self.value))
+        return T[self.size + other.size](smt.BVConcat(other.value, self.value))
 
     def bvnot(self):
         return type(self)(smt.BVNot(self.value))
