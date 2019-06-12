@@ -176,10 +176,8 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     def __len__(self) -> int:
         pass
 
-    #could still be staticmethod but I think thats annoying
-    @classmethod
     @abstractmethod
-    def concat(cls, x, y) -> 'AbstractBitVector':
+    def concat(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod

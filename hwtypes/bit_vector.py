@@ -175,6 +175,10 @@ class BitVector(AbstractBitVector):
     def __repr__(self):
         return "BitVector[{size}]({value})".format(value=self._value, size=self.size)
 
+    @property
+    def value(self):
+        return self._value
+
     def __setitem__(self, index, value):
         if isinstance(index, slice):
             raise NotImplementedError()
@@ -211,10 +215,11 @@ class BitVector(AbstractBitVector):
     def __len__(self):
         return self.size
 
-    # Note: In concat(x, y), the MSB of the result is the MSB of x.
-    @classmethod
-    def concat(cls, x, y):
-        return cls.unsized_t[x.size+y.size](y.bits() + x.bits())
+    def concat(self, other):
+        T = type(self).unsized_t
+        if not isinstance(other, T):
+            raise TypeError(f'value must of type {T}')
+        return T[self.size+other.size](self.value | (other.value << self.size))
 
     def bvnot(self):
         return type(self)(~self.as_uint())
@@ -246,12 +251,12 @@ class BitVector(AbstractBitVector):
     @bv_cast
     def bvrol(self, other):
         other = other.as_uint() % len(self)
-        return self.concat( self[other:], self[0:other] )
+        return self[:other].concat(self[other:])
 
     @bv_cast
     def bvror(self, other):
         other = (len(self) - other.as_uint()) % len(self)
-        return self.concat( self[other:], self[0:other] )
+        return self[:other].concat(self[other:])
 
     @bv_cast
     def bvcomp(self, other):
@@ -400,7 +405,7 @@ class BitVector(AbstractBitVector):
             raise ValueError()
 
         T = type(self).unsized_t
-        return T.concat(T[1](self[-1]).repeat(ext), self)
+        return self.concat(T[1](self[-1]).repeat(ext))
 
     def ext(self, ext):
         return self.zext(other)
@@ -411,7 +416,7 @@ class BitVector(AbstractBitVector):
             raise ValueError()
 
         T = type(self).unsized_t
-        return T.concat(T[ext](0), self)
+        return self.concat(T[ext](0))
 
     @staticmethod
     def random(width):
