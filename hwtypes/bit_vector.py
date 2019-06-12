@@ -368,7 +368,7 @@ class BitVector(AbstractBitVector):
 
     def as_sint(self):
         value = self._value
-        if (value & (1 << (self.size - 1))):
+        if self[-1]:
             value = value - (1 << self.size)
         return value
 
@@ -485,6 +485,6 @@ def overflow(a, b, res):
     msb_a = a[-1]
     msb_b = b[-1]
     N = res[-1]
-    return (msb_a & msb_b & ~N) or (~msb_a & ~msb_b & N)
+    return (msb_a & msb_b & ~N) | (~msb_a & ~msb_b & N)
 
 _Family_ = TypeFamily(Bit, BitVector, UIntVector, SIntVector)
