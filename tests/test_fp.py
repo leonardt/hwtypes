@@ -173,7 +173,7 @@ def test_init(mode, ieee):
 def test_random(eb, mb, mode, ieee, allow_inf):
     FT = FPVector[eb, mb, mode, ieee]
     for _ in  range(NTESTS):
-        r = FT.random(allow_inf)
+        r = FT.random(allow_inf, allow_nan=False)
         assert allow_inf or not r.fp_is_infinite()
         assert not r.fp_is_NaN()
 

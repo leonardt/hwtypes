@@ -382,15 +382,19 @@ class FPVector(AbstractFPVector):
 
     @classmethod
     @set_context
-    def random(cls, allow_inf=True) -> 'FPVector':
+    def random(cls, allow_inf=True, allow_nan=True) -> 'FPVector':
         bias = (1 << (cls.exponent_size - 1)) - 1
+        sign = random.choice([-1, 1])
+        mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
         if allow_inf:
-            sign = random.choice([-1, 1])
-            mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
             exp = random.randint(1-bias, bias+1)
-            return cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
         else:
-            sign = random.choice([-1, 1])
-            mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
             exp = random.randint(1-bias, bias)
-            return cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
+        v = cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
+        while ((not allow_inf) and v.fp_is_infinite()) or ((not allow_nan) and v.fp_is_NaN()):
+            if allow_inf:
+                exp = random.randint(1-bias, bias+1)
+            else:
+                exp = random.randint(1-bias, bias)
+            v = cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
+        return v
