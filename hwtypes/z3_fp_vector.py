@@ -1,5 +1,6 @@
 from .bit_vector_abc import AbstractBitVector
 from .fp_vector_abc import AbstractFPVector, RoundingMode
+from .fp_vector import FPVector
 from .z3_bit_vector import z3BitVector, z3Bit
 import z3
 
@@ -107,6 +108,8 @@ class z3FPVector(AbstractFPVector):
             elif name is not AUTOMATIC and name != value.name:
                 warnings.warn('Changing the name of a z3FPVector does not cause a new underlying smt variable to be created')
             value = value._value
+        elif isinstance(value, FPVector):
+            value = cls.reinterpret_from_bv(value.reinterpret_as_bv())._value
         elif isinstance(value, (float, str)):
             value = z3.fpRealToFP(mode, z3.RealVal(value), sort)
         elif hasattr(value, '__float__'):

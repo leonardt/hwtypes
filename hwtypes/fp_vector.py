@@ -84,7 +84,7 @@ class FPVector(AbstractFPVector):
                     else:
                         self._value = gmpy2.mpfr('-0', precision=self._ctx_.precision)
                 elif self.fp_is_NaN():
-                    self._value = gmp2.mpfr('inf', precision=self._ctx_.precision)
+                    self._value = gmpy2.mpfr('inf', precision=self._ctx_.precision)
 
 
 
@@ -92,16 +92,6 @@ class FPVector(AbstractFPVector):
     @classmethod
     def __init_subclass__(cls, **kwargs):
         if cls.is_bound:
-            #if cls.ieee_compliance:
-            #    precision=cls.mantissa_size+1
-            #    emax=1<<(cls.exponent_size - 1)
-            #    emin=4-emax-precision
-            #    subnormalize=True
-            #else:
-            #    precision=cls.mantissa_size+1
-            #    emax=1<<(cls.exponent_size - 1)
-            #    emin=3-emax
-            #    subnormalize=False
             precision=cls.mantissa_size+1
             emax=1<<(cls.exponent_size - 1)
             emin=4-emax-precision

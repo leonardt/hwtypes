@@ -7,25 +7,35 @@ from hwtypes import FPVector, RoundingMode,BitVector
 from hwtypes import z3FPVector
 import math
 import gmpy2
-import z3
 
-z3Float = z3FPVector[8, 23, RoundingMode.RNE, True]
-Float = FPVector[8, 23, RoundingMode.RNE, True]
-
-z3Double = z3FPVector[11, 52, RoundingMode.RNE, True]
-Double = FPVector[11, 52, RoundingMode.RNE, True]
 
 NTESTS = 16
+REGRESSION_LEVEL = 0
+
+if REGRESSION_LEVEL == 0:
+    MV_LIST = [
+        (0, 2**-16),
+        (0, 1),
+        (0, 2**16),
+    ]
+    MODE_LIST = [
+        RoundingMode.RNE,
+    ]
+elif REGRESSION_LEVEL == 1:
+    MV_LIST = [
+        (0, 2**-64),
+        (0, 2**-16),
+        (0, 2**-4),
+        (0, 1),
+        (0, 2**4),
+        (0, 2**16),
+        (0, 2**64),
+    ]
+    MODE_LIST = list(RoundingMode)
 
 @pytest.mark.parametrize("eb", [8, 11])
 @pytest.mark.parametrize("mb", [7, 23, 52])
-@pytest.mark.parametrize("mode", [
-    RoundingMode.RNE,
-    RoundingMode.RNA,
-    RoundingMode.RTP,
-    RoundingMode.RTN,
-    RoundingMode.RTZ,
-    ])
+@pytest.mark.parametrize("mode", MODE_LIST)
 @pytest.mark.parametrize("ieee", [False, True])
 def test_reinterpret_bv(eb, mb, mode, ieee):
     FT = z3FPVector[eb, mb, mode, ieee]
@@ -54,26 +64,12 @@ def test_reinterpret_bv(eb, mb, mode, ieee):
 
 @pytest.mark.parametrize("eb", [8, 11])
 @pytest.mark.parametrize("mb", [7, 23, 52])
-@pytest.mark.parametrize("mode", [
-    RoundingMode.RNE,
-    RoundingMode.RNA,
-    RoundingMode.RTP,
-    RoundingMode.RTN,
-    RoundingMode.RTZ,
-    ])
+@pytest.mark.parametrize("mode", MODE_LIST)
 @pytest.mark.parametrize("ieee", [
     False,
     True,
     ])
-@pytest.mark.parametrize("mean, variance", [
-    (0, 2**-64),
-    (0, 2**-16),
-    (0, 2**-4),
-    (0, 1),
-    (0, 2**4),
-    (0, 2**16),
-    (0, 2**64),
-    ])
+@pytest.mark.parametrize("mean, variance", MV_LIST)
 def test_reinterpret(eb, mb, mode, ieee, mean, variance):
     T = FPVector[eb, mb, mode, ieee]
     ZT = z3FPVector[eb, mb, mode, ieee]
@@ -85,44 +81,44 @@ def test_reinterpret(eb, mb, mode, ieee, mean, variance):
         assert (ZT.reinterpret_from_bv(zx.reinterpret_as_bv()) == zx)._value
         assert (zx.reinterpret_as_bv() == tx.reinterpret_as_bv())._value
 
-@pytest.mark.parametrize("op", [operator.neg, operator.abs, lambda x : abs(x).fp_sqrt()])
+
+def _sqrt(x):
+    return x.fp_sqrt()
+
+@pytest.mark.parametrize("op", [operator.neg, operator.abs, _sqrt])
 @pytest.mark.parametrize("eb", [8, 11])
 @pytest.mark.parametrize("mb", [7, 23, 52])
-@pytest.mark.parametrize("mode", [
-    RoundingMode.RNE,
-    RoundingMode.RNA,
-    RoundingMode.RTP,
-    RoundingMode.RTN,
-    RoundingMode.RTZ,
-    ])
+@pytest.mark.parametrize("mode", MODE_LIST)
 @pytest.mark.parametrize("ieee", [False, True])
-@pytest.mark.parametrize("mean, variance", [
-    (0, 2**-64),
-    (0, 2**-16),
-    (0, 2**-4),
-    (0, 1),
-    (0, 2**4),
-    (0, 2**16),
-    (0, 2**64),
-    ])
-def test_unary_op(op, ZT, T, mean, variance):
+@pytest.mark.parametrize("mean, variance", MV_LIST)
+def test_unary_op(op, eb, mb, mode, ieee, mean, variance):
+    if mode == RoundingMode.RNA and op is _sqrt:
+        pytest.skip()
+    T = FPVector[eb, mb, mode, ieee]
+    ZT = z3FPVector[eb, mb, mode, ieee]
     for _ in range(NTESTS):
         x = random.normalvariate(mean, variance)
         tx = T(x)
         zx = ZT.reinterpret_from_bv(tx.reinterpret_as_bv())
-        assert (zx == tx)._value
-        assert (zx == ZT.reinterpret_from_bv(tx.reinterpret_as_bv()))._value
-        assert (zx.reinterpret_as_bv() == tx.reinterpret_as_bv())._value
         zr, tr = op(zx), op(tx)
-        assert (zr == tr)._value
-        assert (zr.reinterpret_as_bv() == tr.reinterpret_as_bv())._value
-        assert (tr.reinterpret_as_bv() == BitVector[T.size](zr.reinterpret_as_bv()._value.as_long()))._value
+        if x < 0 and op is _sqrt:
+            if ieee:
+                assert tr.fp_is_NaN()
+                assert zr.fp_is_NaN()._value
+            else:
+                assert tr.fp_is_infinite()
+                assert zr.fp_is_infinite()._value
+        else:
+            assert (zr == tr)._value
+            assert (zr.reinterpret_as_bv() == tr.reinterpret_as_bv())._value
+            assert (tr.reinterpret_as_bv() == BitVector[T.size](zr.reinterpret_as_bv()._value.as_long()))._value
+
 @pytest.mark.parametrize("op", [operator.add, operator.sub, operator.mul, operator.truediv])
 @pytest.mark.parametrize("eb", [8, 11])
 @pytest.mark.parametrize("mb", [7, 23, 52])
 @pytest.mark.parametrize("mode", [
     RoundingMode.RNE,
-    #RoundingMode.RNA,
+    #RoundingMode.RNA, BROKEN
     RoundingMode.RTP,
     RoundingMode.RTN,
     RoundingMode.RTZ,
@@ -131,16 +127,10 @@ def test_unary_op(op, ZT, T, mean, variance):
     False,
     True,
     ])
-@pytest.mark.parametrize("mean, variance", [
-    (0, 2**-64),
-    (0, 2**-16),
-    (0, 2**-4),
-    (0, 1),
-    (0, 2**4),
-    (0, 2**16),
-    (0, 2**64),
-    ])
-def test_bin_op(op, ZT, T, mean, variance):
+@pytest.mark.parametrize("mean, variance", MV_LIST)
+def test_bin_op(op, eb, mb, mode, ieee, mean, variance):
+    T = FPVector[eb, mb, mode, ieee]
+    ZT = z3FPVector[eb, mb, mode, ieee]
     for _ in range(NTESTS):
         x = random.normalvariate(mean, variance)
         y = random.normalvariate(mean, variance)
@@ -158,24 +148,12 @@ def test_bin_op(op, ZT, T, mean, variance):
 @pytest.mark.parametrize("op", [operator.eq, operator.ne, operator.lt, operator.le, operator.gt, operator.ge])
 @pytest.mark.parametrize("eb", [8, 11])
 @pytest.mark.parametrize("mb", [7, 23, 52])
-@pytest.mark.parametrize("mode", [
-    RoundingMode.RNE,
-    RoundingMode.RNA,
-    RoundingMode.RTP,
-    RoundingMode.RTN,
-    RoundingMode.RTZ,
-    ])
+@pytest.mark.parametrize("mode", MODE_LIST)
 @pytest.mark.parametrize("ieee", [False, True])
-@pytest.mark.parametrize("mean, variance", [
-    (0, 2**-64),
-    (0, 2**-16),
-    (0, 2**-4),
-    (0, 1),
-    (0, 2**4),
-    (0, 2**16),
-    (0, 2**64),
-    ])
-def test_bool_op(op, ZT, T, mean, variance):
+@pytest.mark.parametrize("mean, variance", MV_LIST)
+def test_bool_op(op, eb, mb, mode, ieee, mean, variance):
+    T = FPVector[eb, mb, mode, ieee]
+    ZT = z3FPVector[eb, mb, mode, ieee]
     for _ in range(NTESTS):
         x = random.normalvariate(mean, variance)
         y = random.normalvariate(mean, variance)
