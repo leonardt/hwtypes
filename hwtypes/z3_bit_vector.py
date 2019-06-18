@@ -94,9 +94,10 @@ class z3Bit(AbstractBit):
 
     def __repr__(self):
         if self._name is not AUTOMATIC:
-            return self._name
+            return f'{type(self)}({self._name})'
         else:
-            return repr(self._value)
+            return f'{type(self)}({self._value})'
+
     @property
     def value(self):
         return self._value
@@ -257,9 +258,9 @@ class z3BitVector(AbstractBitVector):
 
     def __repr__(self):
         if self._name is not AUTOMATIC:
-            return self._name
+            return f'{type(self)}({self._name})'
         else:
-            return repr(self._value)
+            return f'{type(self)}({self._value})'
 
     def __getitem__(self, index):
         size = self.size
