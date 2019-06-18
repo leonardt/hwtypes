@@ -6,3 +6,4 @@ from .z3_bit_vector import *
 from .fp_vector_abc import *
 from .fp_vector import *
 from .modifiers import *
+from .z3_fp_vector import *

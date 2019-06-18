@@ -18,7 +18,7 @@ _mode_2_gmpy2 = {
 }
 
 def _coerce(T : tp.Type['FPVector'], val : tp.Any) -> 'FPVector':
-    if not isinstance(val, FPVector):
+    if not isinstance(val, T):
         return T(val)
     elif type(val).binding != T.binding:
         raise TypeError('Inconsistent FP type')
@@ -42,58 +42,60 @@ def set_context(fn: tp.Callable) -> tp.Callable:
 class FPVector(AbstractFPVector):
     @set_context
     def __init__(self, value):
-        # Because for some reason gmpy2.mpfr is a function and not a type
-        if isinstance(value, type(gmpy2.mpfr(0))):
-            #need to specify precision because mpfr will use the input
-            #precision not the context precision when constructing from mpfr
-            value = gmpy2.mpfr(value, self._ctx_.precision)
-        elif isinstance(value, FPVector):
-            value = gmpy2.mpfr(value._value, self._ctx_.precision)
-        elif isinstance(value, (int, float, type(gmpy2.mpz(0)), type(gmpy2.mpq(0)))):
-            value = gmpy2.mpfr(value)
-        elif isinstance(value, str):
-            try:
-                #Handles '0.5'
-                value = gmpy2.mpfr(value)
-            except ValueError:
+
+        with gmpy2.local_context(self._ctx_):
+            # Because for some reason gmpy2.mpfr is a function and not a type
+            if isinstance(value, type(gmpy2.mpfr(0))):
+                #need to specify precision because mpfr will use the input
+                #precision not the context precision when constructing from mpfr
+                value = gmpy2.mpfr(value, precision=self._ctx_.precision)
+            elif isinstance(value, FPVector):
+                value = gmpy2.mpfr(value._value, precision=self._ctx_.precision)
+            elif isinstance(value, (int, float, type(gmpy2.mpz(0)), type(gmpy2.mpq(0)))):
+                value = gmpy2.mpfr(value, precision=self._ctx_.precision)
+            elif isinstance(value, str):
                 try:
-                    #Handles '1/2'
-                    value = gmpy2.mpfr(gmpy2.mpq(value))
+                    #Handles '0.5'
+                    value = gmpy2.mpfr(value, precision=self._ctx_.precision)
                 except ValueError:
-                    raise ValueError('Invalid string')
-        elif hasattr(value, '__float__'):
-            value = gmpy2.mpfr(float(value))
-        elif hasattr(value, '__int__'):
-            value = gmpy2.mpfr(int(value))
-        else:
-            try:
-                #if gmpy2 doesn't complain I wont
-                value = gmpy2.mpfr(value)
-            except TypeError:
-                raise TypeError(f"Can't construct FPVector from {type(value)}")
-
-        if gmpy2.is_nan(value) and not type(self).ieee_compliance:
-            if gmpy2.is_signed(value):
-                self._value = gmpy2.mpfr('-inf')
+                    try:
+                        #Handles '1/2'
+                        value = gmpy2.mpfr(gmpy2.mpq(value), precision=self._ctx_.precision)
+                    except ValueError:
+                        raise ValueError('Invalid string')
+            elif hasattr(value, '__float__'):
+                value = gmpy2.mpfr(float(value), precision=self._ctx_.precision)
+            elif hasattr(value, '__int__'):
+                value = gmpy2.mpfr(int(value), precision=self._ctx_.precision)
             else:
-                self._value = gmpy2.mpfr('inf')
+                try:
+                    #if gmpy2 doesn't complain I wont
+                    value = gmpy2.mpfr(value, precision=self._ctx_.precision)
+                except TypeError:
+                    raise TypeError(f"Can't construct FPVector from {type(value)}")
 
-        else:
+
             self._value = value
+
+            if not type(self).ieee_compliance:
+                if self.fp_is_subnormal():
+                    if self.fp_is_positive():
+                        self._value = gmpy2.mpfr('+0', precision=self._ctx_.precision)
+                    else:
+                        self._value = gmpy2.mpfr('-0', precision=self._ctx_.precision)
+                elif self.fp_is_NaN():
+                    self._value = gmpy2.mpfr('inf', precision=self._ctx_.precision)
+
+
+
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
         if cls.is_bound:
-            if cls.ieee_compliance:
-                precision=cls.mantissa_size+1
-                emax=1<<(cls.exponent_size - 1)
-                emin=4-emax-precision
-                subnormalize=True
-            else:
-                precision=cls.mantissa_size+1
-                emax=1<<(cls.exponent_size - 1)
-                emin=3-emax
-                subnormalize=False
+            precision=cls.mantissa_size+1
+            emax=1<<(cls.exponent_size - 1)
+            emin=4-emax-precision
+            subnormalize=True
 
             ctx = gmpy2.context(
                     precision=precision,
@@ -135,7 +137,7 @@ class FPVector(AbstractFPVector):
 
 
     def __repr__(self):
-        return f'{self._value}'
+        return f"{type(self)}({self._value.__format__('b')})"
 
     @set_context
     def fp_abs(self) -> 'FPVector':
@@ -229,7 +231,6 @@ class FPVector(AbstractFPVector):
     def fp_is_subnormal(self) -> Bit:
         bv = self.reinterpret_as_bv()
         if (bv[type(self).mantissa_size:-1] == 0) & ~self.fp_is_zero():
-            assert type(self).ieee_compliance
             return Bit(True)
         else:
             return Bit(False)
@@ -381,15 +382,19 @@ class FPVector(AbstractFPVector):
 
     @classmethod
     @set_context
-    def random(cls, allow_inf=True) -> 'FPVector':
+    def random(cls, allow_inf=True, allow_nan=True) -> 'FPVector':
         bias = (1 << (cls.exponent_size - 1)) - 1
+        sign = random.choice([-1, 1])
+        mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
         if allow_inf:
-            sign = random.choice([-1, 1])
-            mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
             exp = random.randint(1-bias, bias+1)
-            return cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
         else:
-            sign = random.choice([-1, 1])
-            mantissa = gmpy2.mpfr_random(gmpy2.random_state()) + 1
             exp = random.randint(1-bias, bias)
-            return cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
+        v = cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
+        while ((not allow_inf) and v.fp_is_infinite()) or ((not allow_nan) and v.fp_is_NaN()):
+            if allow_inf:
+                exp = random.randint(1-bias, bias+1)
+            else:
+                exp = random.randint(1-bias, bias)
+            v = cls(mantissa*sign*(gmpy2.mpfr(2)**gmpy2.mpfr(exp)))
+        return v
