@@ -139,3 +139,14 @@ def test_new():
 
     t = new(Sum, (En1, Pr), module=__name__)
     assert t.__module__ == __name__
+
+@pytest.mark.parametrize("T", [En1, Tu, Su, Pr])
+def test_repr(T):
+    s = repr(T)
+    assert isinstance(s, str)
+    assert s != ''
+    for e in T.enumerate():
+        s = repr(e)
+        assert isinstance(s, str)
+        assert s != ''
+
