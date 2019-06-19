@@ -135,7 +135,7 @@ class FPVector(AbstractFPVector):
 
 
     def __repr__(self):
-        return f'{self._value}'
+        return f'{type(self)}({self._value})'
 
     @set_context
     def fp_abs(self) -> 'FPVector':

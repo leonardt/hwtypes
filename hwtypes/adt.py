@@ -53,7 +53,7 @@ class Tuple(metaclass=TupleMeta):
         return self._value
 
     def __repr__(self):
-        return f'{type(self).__name__}({",".join(map(repr, self.value))})'
+        return f'{type(self).__name__}({", ".join(map(repr, self.value))})'
 
 class Product(Tuple, metaclass=ProductMeta):
     def __new__(cls, *args, **kwargs):
@@ -68,7 +68,7 @@ class Product(Tuple, metaclass=ProductMeta):
             raise TypeError('Cannot instance unbound product type')
 
     def __repr__(self):
-        return f'{type(self).__name__}({",".join(map(repr, self.value))})'
+        return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict)})'
 
     @property
     def value_dict(self):

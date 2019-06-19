@@ -98,9 +98,10 @@ class SMTBit(AbstractBit):
 
     def __repr__(self):
         if self._name is not AUTOMATIC:
-            return self._name
+            return f'{type(self)}({self._name})'
         else:
-            return repr(self._value)
+            return f'{type(self)}({self._value})'
+
     @property
     def value(self):
         return self._value
@@ -259,9 +260,9 @@ class SMTBitVector(AbstractBitVector):
 
     def __repr__(self):
         if self._name is not AUTOMATIC:
-            return self._name
+            return f'{type(self)}({self._name})'
         else:
-            return repr(self._value)
+            return f'{type(self)}({self._value})'
 
     def __getitem__(self, index):
         size = self.size
@@ -323,7 +324,7 @@ class SMTBitVector(AbstractBitVector):
     def concat(self, other):
         T = type(self).unsized_t
         if not isinstance(other, T):
-            raise TypeError(f'value must of type {T}')
+            raise TypeError(f'value must of type {T} not {type(other)}')
         return T[self.size + other.size](smt.BVConcat(other.value, self.value))
 
     def bvnot(self):
