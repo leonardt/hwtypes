@@ -96,3 +96,14 @@ def test_setitem():
   assert repr(bv) == 'BitVector[3](6)'
   bv[2] = 0
   assert repr(bv) == 'BitVector[3](2)'
+
+@pytest.mark.parametrize("val", [
+        BitVector.random(8),
+        BitVector.random(8).as_sint(),
+        BitVector.random(8).as_uint(),
+        [0,1,1,0],
+    ])
+def test_deprecated(val):
+    with pytest.warns(DeprecationWarning):
+        BitVector(val)
+

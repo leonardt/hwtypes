@@ -22,7 +22,8 @@ class AbstractBitVectorMeta(ABCMeta):
             else:
                 return super().__call__(value, *args, **kwargs)
         else:
-            warnings.warn('DEPRECATION WARNING: Use of implicitly sized BitVectors is deprecated')
+            warnings.warn('DEPRECATION WARNING: Use of implicitly sized '
+                          'BitVectors is deprecated', DeprecationWarning)
 
             if value is _MISSING:
                 raise TypeError('Cannot construct {} without a value'.format(cls, value))
