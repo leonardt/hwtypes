@@ -88,7 +88,7 @@ def test_eq():
 
 
 def test_setitem():
-  bv = BitVector(5)
+  bv = BitVector[3](5)
   assert bv.as_uint() ==5
   bv[0] = 0
   assert repr(bv) == 'BitVector[3](4)'
