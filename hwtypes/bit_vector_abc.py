@@ -15,17 +15,14 @@ class AbstractBitVectorMeta(ABCMeta):
     # BitVectorType, size :  BitVectorType[size]
     _class_cache = weakref.WeakValueDictionary()
 
-    def __call__(cls, value=_MISSING, size=_MISSING, *args, **kwargs):
-        if cls.is_sized and size is not _MISSING:
-            raise TypeError('Cannot use old style construction on sized types')
-        elif cls.is_sized:
+    def __call__(cls, value=_MISSING, *args, **kwargs):
+        if cls.is_sized:
             if value is _MISSING:
                 return super().__call__(*args, **kwargs)
             else:
                 return super().__call__(value, *args, **kwargs)
-        elif size is _MISSING or size is None:
-            if size is None:
-                warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
+        else:
+            warnings.warn('DEPRECATION WARNING: Use of implicitly sized BitVectors is deprecated')
 
             if value is _MISSING:
                 raise TypeError('Cannot construct {} without a value'.format(cls, value))
@@ -41,8 +38,6 @@ class AbstractBitVectorMeta(ABCMeta):
                 size = max(int(value).bit_length(), 1)
             else:
                 raise TypeError('Cannot construct {} from {}'.format(cls, value))
-        else:
-            warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
 
         return type(cls).__call__(cls[size], value)
 
