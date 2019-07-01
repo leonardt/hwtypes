@@ -89,15 +89,7 @@ class Bit(AbstractBit):
             t_branch = fb_t(t_branch)
             T = fb_t
         else:
-            t_branch = BV_t(t_branch)
-            f_branch = BV_t(f_branch)
-            ext = t_branch.size - f_branch.size
-            if ext > 0:
-                f_branch = f_branch.zext(ext)
-            elif ext < 0:
-                t_branch = t_branch.zext(-ext)
-
-            T = type(t_branch)
+            raise TypeError(f'Atleast one branch must be a {self.get_family().BitVector}')
 
 
         return t_branch if self else f_branch

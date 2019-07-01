@@ -80,19 +80,13 @@ def test_ite(t_constructor, t_size, f_constructor, f_size):
     if t_constructor is f_constructor is _rand_bv and t_size == f_size:
         res = pred.ite(t, f)
         assert type(res) is type(t)
-    elif t_constructor is f_constructor is _rand_bv:
+    elif t_constructor is f_constructor:
+        # either both ints or BV with different size
         with pytest.raises(TypeError):
             res = pred.ite(t, f)
-    elif t_constructor is f_constructor: #rand int
-        res = pred.ite(t, f)
-        t_size = max(t.bit_length(), 1)
-        f_size = max(f.bit_length(), 1)
-        assert type(res) is BitVector[max(t_size, f_size)]
     elif t_constructor is _rand_bv:
         res = pred.ite(t, f)
         assert type(res) is BitVector[t_size]
     else: #t_constructor is _rand_int
-        print(type(t), t, t_constructor, t_size)
-        print(type(f), f, f_constructor, f_size)
         res = pred.ite(t, f)
         assert type(res) is BitVector[f_size]
