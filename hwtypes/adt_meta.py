@@ -1,5 +1,6 @@
 import itertools as it
 import typing as tp
+from abc import ABCMeta, abstractmethod
 
 import weakref
 
@@ -52,7 +53,8 @@ def is_adt_type(t):
     return isinstance(t, BoundMeta)
 
 
-class BoundMeta(type):
+# Can't have abstract metaclass https://bugs.python.org/issue36881
+class BoundMeta(type): #, metaclass=ABCMeta):
     # (UnboundType, (types...)) : BoundType
     _class_cache = weakref.WeakValueDictionary()
 
@@ -83,7 +85,6 @@ class BoundMeta(type):
                 elif bound_types != base.fields:
                     raise TypeError("Can't inherit from multiple different bound_types")
 
-
         if bound_types is not None:
             if '_fields_cb' in namespace:
                 bound_types  = namespace['_fields_cb'](bound_types)
@@ -95,7 +96,6 @@ class BoundMeta(type):
         namespace['_fields_'] = bound_types
         t = super().__new__(mcs, name, bases, namespace, **kwargs)
         return t
-
 
     def _fields_cb(cls, idx):
         '''
@@ -132,11 +132,17 @@ class BoundMeta(type):
         return cls._fields_
 
     @property
+    @abstractmethod
+    def fields_dict(cls):
+        pass
+
+    @property
     def is_bound(cls) -> bool:
         return cls.fields is not None
 
     def __repr__(cls):
         return f"{cls.__name__}"
+
 
 class TupleMeta(BoundMeta):
     def __getitem__(cls, idx):
@@ -155,6 +161,11 @@ class TupleMeta(BoundMeta):
 
         for args in it.product(*field_iters):
             yield cls(*args)
+
+    @property
+    def field_dict(cls):
+        return MappingProxyType({idx : field for idx, field in enumerate(cls.fields)})
+
 
 class ProductMeta(TupleMeta):
     def __new__(mcs, name, bases, namespace, **kwargs):

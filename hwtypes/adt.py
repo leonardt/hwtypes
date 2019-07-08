@@ -55,6 +55,14 @@ class Tuple(metaclass=TupleMeta):
     def __repr__(self):
         return f'{type(self).__name__}({", ".join(map(repr, self.value))})'
 
+    @property
+    def value_dict(self):
+        d = {}
+        for k in type(self).field_dict:
+            d[k] = getattr(self, k)
+        return MappingProxyType(d)
+
+
 class Product(Tuple, metaclass=ProductMeta):
     def __new__(cls, *args, **kwargs):
         if cls.is_bound:
@@ -70,12 +78,6 @@ class Product(Tuple, metaclass=ProductMeta):
     def __repr__(self):
         return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict.items())})'
 
-    @property
-    def value_dict(self):
-        d = {}
-        for k in type(self).field_dict:
-            d[k] = getattr(self, k)
-        return MappingProxyType(d)
 
 class Sum(metaclass=SumMeta):
     def __init__(self, value):
