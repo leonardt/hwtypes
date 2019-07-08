@@ -55,6 +55,14 @@ class Tuple(metaclass=TupleMeta):
     def __repr__(self):
         return f'{type(self).__name__}({", ".join(map(repr, self.value))})'
 
+    @property
+    def value_dict(self):
+        d = {}
+        for k in type(self).field_dict:
+            d[k] = self[k]
+        return MappingProxyType(d)
+
+
 class Product(Tuple, metaclass=ProductMeta):
     def __new__(cls, *args, **kwargs):
         if cls.is_bound:

@@ -50,6 +50,9 @@ def test_tuple():
     t[0] = En1.b
     assert (t[0],t[1]) == (En1.b,En2.c)
 
+    assert Tu.field_dict == {0 : En1, 1 : En2 }
+    assert t.value_dict == {0 : En1.b, 1: En2.c}
+
     with pytest.raises(TypeError):
         Tu(En1.a, 1)
 
