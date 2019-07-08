@@ -28,27 +28,6 @@ def _is_descriptor(obj):
     return hasattr(obj, '__get__') or hasattr(obj, '__set__') or hasattr(obj, '__delete__')
 
 
-class _key_map_dict(Mapping):
-    def __init__(self, f: Mapping, d: Mapping):
-        self._f = f
-        self._d = d
-
-    def __getitem__(self, key):
-        return self._d[self._f[key]]
-
-    def __iter__(self):
-        yield from self._f
-
-    def __len__(self):
-        return len(self._f)
-
-    def __repr__(self):
-        c = []
-        for k,v in self.items():
-            c.append('{}:{}'.format(k,v))
-        return f'{type(self).__name__}({",".join(c)})'
-
-
 def is_adt_type(t):
     return isinstance(t, BoundMeta)
 
