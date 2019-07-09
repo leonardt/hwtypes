@@ -144,5 +144,16 @@ class Enum(metaclass=EnumMeta):
     def __hash__(self):
         return hash(self.value)
 
+    def __getattribute__(self, attr):
+        # prevent:
+        #  class E(Enum):
+        #   a = 0
+        #   b = 1
+        #  E.a.b == E.b
+        if attr in type(self).field_dict:
+            raise AttributeError('Cannot access enum members from enum instances')
+        else:
+            return super().__getattribute__(attr)
+
 def new_instruction():
     return EnumMeta.Auto()
