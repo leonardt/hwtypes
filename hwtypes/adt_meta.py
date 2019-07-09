@@ -153,7 +153,7 @@ class TupleMeta(BoundMeta):
     def field_dict(cls):
         return MappingProxyType({idx : field for idx, field in enumerate(cls.fields)})
 
-_RESERVED_NAMES = {'fields', 'field_dict', 'is_bound', 'value', 'value_dict'}
+_RESERVED_NAMES = {'enumerate', 'fields', 'field_dict', 'is_bound', 'value', 'value_dict'}
 class ProductMeta(TupleMeta):
     def __new__(mcs, name, bases, namespace, **kwargs):
         fields = {}
