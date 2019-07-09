@@ -154,13 +154,13 @@ class ProductMeta(TupleMeta):
             if base.is_bound:
                 for k,v in base.field_dict.items():
                     if k in fields:
-                        raise TypeError(f'Conflicting defintions of field {k}')
+                        raise TypeError(f'Conflicting definitions of field {k}')
                     else:
                         fields[k] = v
         for k, v in namespace.items():
             if isinstance(v, type):
                 if k in fields:
-                    raise TypeError(f'Conflicting defintions of field {k}')
+                    raise TypeError(f'Conflicting definitions of field {k}')
                 else:
                     fields[k] = v
             else:
@@ -173,8 +173,8 @@ class ProductMeta(TupleMeta):
 
     @classmethod
     def from_fields(mcs, fields, name, bases, ns, **kwargs):
-        # not strictly necesarry could iterative over class dict finding
-        # TypedProperty to reconstuct _field_table_ but that seems bad
+        # not strictly necessary could iterative over class dict finding
+        # TypedProperty to reconstruct _field_table_ but that seems bad
         if '_field_table_' in ns:
             raise TypeError('class attribute _field_table_ is reversed by the type machinery')
         else:
@@ -192,7 +192,7 @@ class ProductMeta(TupleMeta):
         base = _get_tuple_base(bases)[tuple(fields.values())]
         bases = *bases, base
 
-        #field_name -> tuple index
+        # field_name -> tuple index
         idx_table = dict((k, i) for i,k in enumerate(fields.keys()))
 
         def _make_prop(field_type, idx):
@@ -206,17 +206,17 @@ class ProductMeta(TupleMeta):
 
             return prop
 
-        #add properties to namespace
-        #build properties
+        # add properties to namespace
+        # build properties
         for field_name, field_type in fields.items():
             assert field_name not in ns
             idx = idx_table[field_name]
             ns['_field_table_'][field_name] = field_type
             ns[field_name] = _make_prop(field_type, idx)
 
-        #this is all realy gross but I don't know how to do this cleanly
-        #need to build t so I can call super() in new and init
-        #need to exec to get proper signatures
+        # this is all really gross but I don't know how to do this cleanly
+        # need to build t so I can call super() in new and init
+        # need to exec to get proper signatures
         t = super().__new__(mcs, name, bases, ns, **kwargs)
         gs = {name : t, 'ProductMeta' : ProductMeta}
         ls = {}
@@ -224,7 +224,7 @@ class ProductMeta(TupleMeta):
         arg_list = ','.join(fields.keys())
         type_sig = ','.join(f'{k}: {v.__name__!r}' for k,v in fields.items())
 
-        #build __new__
+        # build __new__
         __new__ = f'''
 def __new__(cls, {type_sig}):
     return super({name}, cls).__new__(cls, {arg_list})
@@ -232,7 +232,7 @@ def __new__(cls, {type_sig}):
         exec(__new__, gs, ls)
         t.__new__ = ls['__new__']
 
-        #build __init__
+        # build __init__
         __init__ = f'''
 def __init__(self, {type_sig}):
     return super({name}, self).__init__({arg_list})
@@ -241,7 +241,7 @@ def __init__(self, {type_sig}):
         t.__init__ = ls['__init__']
 
 
-        #Store the field indexs
+        # Store the field indexs
         return t
 
 
