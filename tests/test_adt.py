@@ -15,6 +15,14 @@ class Pr(Product):
     x = En1
     y = En2
 
+class Pr2(Product):
+    x = En1
+    y = En2
+
+class Pr3(Product):
+    y = En2
+    x = En1
+
 Su = Sum[En1, Pr]
 
 Tu = Tuple[En1, En2]
@@ -105,6 +113,10 @@ def test_product():
 
     with pytest.raises(TypeError):
         p[0] = En2.c
+
+    assert Pr != Pr2
+    assert Pr.field_dict == Pr2.field_dict
+    assert Pr.field_dict != Pr3.field_dict
 
 
 def test_sum():
