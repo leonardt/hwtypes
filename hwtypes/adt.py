@@ -66,17 +66,6 @@ class Tuple(metaclass=TupleMeta):
 
 
 class Product(Tuple, metaclass=ProductMeta):
-    def __new__(cls, *args, **kwargs):
-        if cls.is_bound:
-            return super().__new__(cls, *args, **kwargs)
-        elif len(args) == 1:
-            #fields, name, bases, namespace
-            t = type(cls).from_fields(kwargs, args[0], (cls,), {})
-            return t
-
-        else:
-            raise TypeError('Cannot instance unbound product type')
-
     def __repr__(self):
         return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict.items())})'
 
