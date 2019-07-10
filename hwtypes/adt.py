@@ -1,4 +1,5 @@
 from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta, is_adt_type
+from collections import OrderedDict
 from types import MappingProxyType
 
 __all__  = ['Tuple', 'Product', 'Sum', 'Enum']
@@ -80,7 +81,7 @@ class Product(Tuple, metaclass=ProductMeta):
 
     @property
     def value_dict(self):
-        d = {}
+        d = OrderedDict()
         for k in type(self).field_dict:
             d[k] = getattr(self, k)
         return MappingProxyType(d)

@@ -1,6 +1,7 @@
 import itertools as it
 import typing as tp
 from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
 
 import weakref
 
@@ -190,7 +191,7 @@ class ProductMeta(TupleMeta):
         if '_field_table_' in ns:
             raise ReservedNameError('class attribute _field_table_ is reserved by the type machinery')
         else:
-            ns['_field_table_'] = dict()
+            ns['_field_table_'] = OrderedDict()
 
         def _get_tuple_base(bases):
             for base in bases:
