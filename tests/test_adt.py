@@ -1,5 +1,6 @@
 import pytest
 from hwtypes.adt import Product, Sum, Enum, Tuple
+from hwtypes.adt_meta import _RESERVED_NAMES, ReservedNameError
 from hwtypes.modifiers import new
 
 class En1(Enum):
@@ -30,6 +31,9 @@ def test_enum():
     assert issubclass(En1, Enum)
     assert isinstance(En1.a, Enum)
     assert isinstance(En1.a, En1)
+
+    with pytest.raises(AttributeError):
+        En1.a.b
 
 def test_tuple():
     assert set(Tu.enumerate()) == {
@@ -152,4 +156,18 @@ def test_repr(T):
         s = repr(e)
         assert isinstance(s, str)
         assert s != ''
+
+
+@pytest.mark.parametrize("T_field", [(Enum, '0'), (Product, 'int')])
+@pytest.mark.parametrize("field_name", list(_RESERVED_NAMES))
+def test_reserved(T_field, field_name):
+    T, field = T_field
+    l_dict = {'T' : T}
+    cls_str = f'''
+class _(T):
+    {field_name} = {field}
+'''
+    with pytest.raises(ReservedNameError):
+        exec(cls_str, l_dict)
+
 

@@ -24,6 +24,12 @@ def _is_dunder(name):
             and name[2] != '_' and name[-3] != '_')
 
 
+def _is_sunder(name):
+    return (len(name) > 2
+            and name[0] == name[-1] == '_'
+            and name[1] != '_' and name[-2] != '_')
+
+
 def _is_descriptor(obj):
     return hasattr(obj, '__get__') or hasattr(obj, '__set__') or hasattr(obj, '__delete__')
 
@@ -31,6 +37,8 @@ def _is_descriptor(obj):
 def is_adt_type(t):
     return isinstance(t, BoundMeta)
 
+
+class ReservedNameError(Exception): pass
 
 # Can't have abstract metaclass https://bugs.python.org/issue36881
 class BoundMeta(type): #, metaclass=ABCMeta):
@@ -54,7 +62,7 @@ class BoundMeta(type): #, metaclass=ABCMeta):
 
     def __new__(mcs, name, bases, namespace, fields=None, **kwargs):
         if '_fields_' in namespace:
-            raise TypeError('class attribute _fields_ is reversed by the type machinery')
+            raise ReservedNameError('class attribute _fields_ is reserved by the type machinery')
 
         bound_types = fields
         for base in bases:
@@ -145,7 +153,7 @@ class TupleMeta(BoundMeta):
     def field_dict(cls):
         return MappingProxyType({idx : field for idx, field in enumerate(cls.fields)})
 
-
+_RESERVED_NAMES = {'enumerate', 'fields', 'field_dict', 'is_bound', 'value', 'value_dict'}
 class ProductMeta(TupleMeta):
     def __new__(mcs, name, bases, namespace, **kwargs):
         fields = {}
@@ -158,7 +166,11 @@ class ProductMeta(TupleMeta):
                     else:
                         fields[k] = v
         for k, v in namespace.items():
-            if isinstance(v, type):
+            if _is_sunder(k) or _is_dunder(k) or _is_descriptor(v):
+                ns[k] = v
+            elif k in _RESERVED_NAMES:
+                raise ReservedNameError(f'Field name {k} is reserved by the type machinery')
+            elif isinstance(v, type):
                 if k in fields:
                     raise TypeError(f'Conflicting definitions of field {k}')
                 else:
@@ -176,7 +188,7 @@ class ProductMeta(TupleMeta):
         # not strictly necessary could iterative over class dict finding
         # TypedProperty to reconstruct _field_table_ but that seems bad
         if '_field_table_' in ns:
-            raise TypeError('class attribute _field_table_ is reversed by the type machinery')
+            raise ReservedNameError('class attribute _field_table_ is reserved by the type machinery')
         else:
             ns['_field_table_'] = dict()
 
@@ -286,16 +298,18 @@ class EnumMeta(BoundMeta):
 
     def __new__(mcs, cls_name, bases, namespace, **kwargs):
         if '_field_table_' in namespace:
-            raise TypeError('class attribute _field_table_ is reversed by the type machinery')
+            raise ReservedNameError('class attribute _field_table_ is reserved by the type machinery')
 
         elems = {}
         ns = {}
 
         for k, v in namespace.items():
-            if isinstance(v,  (int, mcs.Auto)):
-                elems[k] = v
-            elif _is_dunder(k) or _is_descriptor(v):
+            if _is_dunder(k) or _is_sunder(k) or _is_descriptor(v):
                 ns[k] = v
+            elif k in _RESERVED_NAMES:
+                raise ReservedNameError(f'Field name {k} is resevsed by the type machinery')
+            elif isinstance(v,  (int, mcs.Auto)):
+                elems[k] = v
             else:
                 raise TypeError(f'Enum value should be int not {type(v)}')
 
