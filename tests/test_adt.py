@@ -7,25 +7,32 @@ class En1(Enum):
     a = 0
     b = 1
 
+
 class En2(Enum):
     c = 0
     d = 1
+
 
 class Pr(Product):
     x = En1
     y = En2
 
+
 class Pr2(Product):
     x = En1
     y = En2
+
 
 class Pr3(Product):
     y = En2
     x = En1
 
+
 Su = Sum[En1, Pr]
 
+
 Tu = Tuple[En1, En2]
+
 
 def test_enum():
     assert set(En1.enumerate()) == {
@@ -42,6 +49,7 @@ def test_enum():
 
     with pytest.raises(AttributeError):
         En1.a.b
+
 
 def test_tuple():
     assert set(Tu.enumerate()) == {
@@ -70,6 +78,7 @@ def test_tuple():
 
     with pytest.raises(TypeError):
         t[1] = 1
+
 
 def test_product():
     assert set(Pr.enumerate()) == {
@@ -119,6 +128,26 @@ def test_product():
     assert Pr.field_dict != Pr3.field_dict
 
 
+def test_product_from_fields():
+    P = Product.from_fields('P', {'A' : int, 'B' : str})
+    assert issubclass(P, Product)
+    assert issubclass(P, Tuple[int, str])
+    assert P.A == int
+    assert P.B == str
+    assert P.__name__ == 'P'
+    assert P.__module__ == Product.__module__
+    assert P.__qualname__ == 'P'
+
+    P = Product.from_fields('P', {'A' : int, 'B' : str}, module='foo')
+    assert P.__module__ == 'foo'
+
+    P = Product.from_fields('P', {'A' : int, 'B' : str}, qualname='Foo.P')
+    assert P.__qualname__ == 'Foo.P'
+
+    with pytest.raises(TypeError):
+        Pr.from_fields('P', {'A' : int, 'B' : str})
+
+
 def test_sum():
     assert set(Su.enumerate()) == {
             Su(En1.a),
@@ -159,6 +188,7 @@ def test_new():
     t = new(Sum, (En1, Pr), module=__name__)
     assert t.__module__ == __name__
 
+
 @pytest.mark.parametrize("T", [En1, Tu, Su, Pr])
 def test_repr(T):
     s = repr(T)
@@ -181,5 +211,3 @@ class _(T):
 '''
     with pytest.raises(ReservedNameError):
         exec(cls_str, l_dict)
-
-
