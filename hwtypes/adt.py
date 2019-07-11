@@ -1,6 +1,7 @@
 from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta, is_adt_type
 from collections import OrderedDict
 from types import MappingProxyType
+import typing as tp
 
 __all__  = ['Tuple', 'Product', 'Sum', 'Enum']
 __all__ += ['new_instruction', 'is_adt_type']
@@ -65,17 +66,6 @@ class Tuple(metaclass=TupleMeta):
 
 
 class Product(Tuple, metaclass=ProductMeta):
-    def __new__(cls, *args, **kwargs):
-        if cls.is_bound:
-            return super().__new__(cls, *args, **kwargs)
-        elif len(args) == 1:
-            #fields, name, bases, namespace
-            t = type(cls).from_fields(kwargs, args[0], (cls,), {})
-            return t
-
-        else:
-            raise TypeError('Cannot instance unbound product type')
-
     def __repr__(self):
         return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict.items())})'
 
@@ -85,6 +75,28 @@ class Product(Tuple, metaclass=ProductMeta):
         for k in type(self).field_dict:
             d[k] = getattr(self, k)
         return MappingProxyType(d)
+
+    @classmethod
+    def from_fields(cls,
+            class_name: str,
+            fields: tp.Mapping[str, type],
+            module: tp.Optional[str] = None,
+            qualname: tp.Optional[str] = None):
+        if cls.is_bound:
+            raise TypeError('Type must not be bound')
+
+        ns = {}
+
+        if module is None:
+            module = cls.__module__
+
+        if qualname is None:
+            qualname = class_name
+
+        ns['__module__'] = module
+        ns['__qualname__'] = qualname
+
+        return cls._from_fields(fields, class_name, (cls,), ns)
 
 class Sum(metaclass=SumMeta):
     def __init__(self, value):

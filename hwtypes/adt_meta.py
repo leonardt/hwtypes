@@ -169,8 +169,6 @@ class ProductMeta(TupleMeta):
         for k, v in namespace.items():
             if _is_sunder(k) or _is_dunder(k) or _is_descriptor(v):
                 ns[k] = v
-            elif k in _RESERVED_NAMES:
-                raise ReservedNameError(f'Field name {k} is reserved by the type machinery')
             elif isinstance(v, type):
                 if k in fields:
                     raise TypeError(f'Conflicting definitions of field {k}')
@@ -180,18 +178,22 @@ class ProductMeta(TupleMeta):
                 ns[k] = v
 
         if fields:
-            return mcs.from_fields(fields, name, bases, ns,  **kwargs)
+            return mcs._from_fields(fields, name, bases, ns,  **kwargs)
         else:
             return super().__new__(mcs, name, bases, ns, **kwargs)
 
     @classmethod
-    def from_fields(mcs, fields, name, bases, ns, **kwargs):
+    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
         # not strictly necessary could iterative over class dict finding
         # TypedProperty to reconstruct _field_table_ but that seems bad
         if '_field_table_' in ns:
             raise ReservedNameError('class attribute _field_table_ is reserved by the type machinery')
         else:
             ns['_field_table_'] = OrderedDict()
+
+        for field in fields:
+            if field in _RESERVED_NAMES:
+                raise ReservedNameError(f'Field name {field} is reserved by the type machinery')
 
         def _get_tuple_base(bases):
             for base in bases:
