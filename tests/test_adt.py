@@ -46,6 +46,7 @@ def test_enum():
     assert issubclass(En1, Enum)
     assert isinstance(En1.a, Enum)
     assert isinstance(En1.a, En1)
+    assert En1.is_bound
 
     with pytest.raises(AttributeError):
         En1.a.b
@@ -211,3 +212,15 @@ class _(T):
 '''
     with pytest.raises(ReservedNameError):
         exec(cls_str, l_dict)
+
+@pytest.mark.parametrize("t, base", [
+    (En1, Enum),
+    (Pr, Product),
+    (Su, Sum),
+    (Tu, Tuple),
+    ])
+def test_unbound_t(t, base):
+    assert t.unbound_t == base
+    class sub_t(t): pass
+    with pytest.raises(AttributeError):
+        sub_t.unbound_t
