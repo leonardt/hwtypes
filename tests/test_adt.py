@@ -13,6 +13,11 @@ class En2(Enum):
     d = 1
 
 
+class En3(Enum):
+    e = 3
+    f = 4
+
+
 class Pr(Product):
     x = En1
     y = En2
@@ -224,3 +229,35 @@ def test_unbound_t(t, base):
     class sub_t(t): pass
     with pytest.raises(AttributeError):
         sub_t.unbound_t
+
+@pytest.mark.parametrize("T", [Tu, Su, Pr])
+def test_rebind(T):
+    assert En1 in T.fields
+    assert En3 not in T.fields
+    T2 = T.rebind(En1, En3)
+    assert En1 not in T2.fields
+    assert En3 in T2.fields
+
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+class P1(Product):
+    A = A
+    B = B
+
+S1 = Sum[C, P1]
+
+class P2(Product):
+    S1 = S1
+    C = C
+
+def test_rebind_recusrive():
+    P3 = P2.rebind(A, D)
+    assert P3.S1.field_dict['P1'].A == D
+    assert P3.S1.field_dict['P1'].B == B
+    assert C in P3.S1.fields
+    P4 = P3.rebind(C, D)
+    assert P4.C == D
+    assert D in P4.S1.fields

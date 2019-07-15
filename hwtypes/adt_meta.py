@@ -159,6 +159,16 @@ class BoundMeta(type): #, metaclass=ABCMeta):
     def __repr__(cls):
         return f"{cls.__name__}"
 
+    def rebind(cls, A : type, B : type):
+        new_fields = []
+        for T in cls.fields:
+            if T == A:
+                new_fields.append(B)
+            elif isinstance(T, BoundMeta):
+                new_fields.append(T.rebind(A, B))
+            else:
+                new_fields.append(T)
+        return cls.unbound_t[new_fields]
 
 class TupleMeta(BoundMeta):
     def __getitem__(cls, idx):
@@ -314,6 +324,38 @@ def __init__(self, {type_sig}):
     def field_dict(cls):
         return MappingProxyType(cls._field_table_)
 
+    def from_fields(cls,
+            class_name: str,
+            fields: tp.Mapping[str, type],
+            module: tp.Optional[str] = None,
+            qualname: tp.Optional[str] = None):
+        if cls.is_bound:
+            raise TypeError('Type must not be bound')
+
+        ns = {}
+
+        if module is None:
+            module = cls.__module__
+
+        if qualname is None:
+            qualname = class_name
+
+        ns['__module__'] = module
+        ns['__qualname__'] = qualname
+
+        return cls._from_fields(fields, class_name, (cls,), ns)
+
+
+    def rebind(cls, A : type, B : type):
+        new_fields = OrderedDict()
+        for field, T in cls.field_dict.items():
+            if T == A:
+                new_fields[field] = B
+            elif isinstance(T, BoundMeta):
+                new_fields[field] = T.rebind(A, B)
+            else:
+                new_fields[field] = T
+        return cls.unbound_t.from_fields(cls.__name__, new_fields, cls.__module__, cls.__qualname__)
 
 class SumMeta(BoundMeta):
     def _fields_cb(cls, idx):
@@ -392,3 +434,8 @@ class EnumMeta(BoundMeta):
 
     def enumerate(cls):
         yield from cls.fields
+
+    def rebind(cls, A : type, B : type):
+        # Enums aren't bound to types
+        # could potentialy rebind values but that seems annoying
+        return cls
