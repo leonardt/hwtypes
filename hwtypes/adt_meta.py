@@ -283,8 +283,17 @@ def __init__(self, {type_sig}):
         exec(__init__, gs, ls)
         t.__init__ = ls['__init__']
 
+        product_base = None
+        for base in bases:
+            if isinstance(base, mcs):
+                if product_base is None:
+                    product_base = base
+                else:
+                    raise TypeError('Can only inherit from one product type')
 
-        # Store the field indexs
+        if product_base is not None and not product_base.is_bound:
+            t._unbound_base_ = product_base
+
         return t
 
 
@@ -358,6 +367,17 @@ class EnumMeta(BoundMeta):
             setattr(t, name, elem)
 
         t._fields_ = tuple(name_table.values())
+
+        enum_base = None
+        for base in bases:
+            if isinstance(base, mcs):
+                if enum_base is None:
+                    enum_base = base
+                else:
+                    raise TypeError('Can only inherit from one enum type')
+
+        if enum_base is not None:
+            t._unbound_base_ = enum_base
 
         return t
 
