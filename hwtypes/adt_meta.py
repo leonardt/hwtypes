@@ -64,14 +64,22 @@ class BoundMeta(type): #, metaclass=ABCMeta):
     def __new__(mcs, name, bases, namespace, fields=None, **kwargs):
         if '_fields_' in namespace:
             raise ReservedNameError('class attribute _fields_ is reserved by the type machinery')
+        if '_unbound_base_' in namespace:
+            raise ReservedNameError('class attribute _unbound_base_ is reserved by the type machinery')
 
         bound_types = fields
+        has_bound_base = False
+        unbound_bases = []
         for base in bases:
-            if isinstance(base, BoundMeta) and base.is_bound:
-                if bound_types is None:
-                    bound_types = base.fields
-                elif bound_types != base.fields:
-                    raise TypeError("Can't inherit from multiple different bound_types")
+            if isinstance(base, BoundMeta):
+                if base.is_bound:
+                    has_bound_base = True
+                    if bound_types is None:
+                        bound_types = base.fields
+                    elif bound_types != base.fields:
+                        raise TypeError("Can't inherit from multiple different bound_types")
+                else:
+                    unbound_bases.append(base)
 
         if bound_types is not None:
             if '_fields_cb' in namespace:
@@ -82,7 +90,19 @@ class BoundMeta(type): #, metaclass=ABCMeta):
                         bound_types = t._fields_cb(bound_types)
 
         namespace['_fields_'] = bound_types
+        namespace['_unbound_base_'] = None
         t = super().__new__(mcs, name, bases, namespace, **kwargs)
+
+        if bound_types is None:
+            # t is a unbound type
+            t._unbound_base_ = t
+        elif len(unbound_bases) == 1:
+            # t is constructed from an unbound type
+            t._unbound_base_ = unbound_bases[0]
+        elif not has_bound_base:
+            # this shouldn't be reachable
+            raise AssertionError("Unreachable code")
+
         return t
 
     def _fields_cb(cls, idx):
@@ -127,6 +147,14 @@ class BoundMeta(type): #, metaclass=ABCMeta):
     @property
     def is_bound(cls) -> bool:
         return cls.fields is not None
+
+    @property
+    def unbound_t(cls) -> 'BoundMeta':
+        t = cls._unbound_base_
+        if t is not None:
+            return t
+        else:
+            raise AttributeError(f'type {cls} has no unbound_t')
 
     def __repr__(cls):
         return f"{cls.__name__}"
