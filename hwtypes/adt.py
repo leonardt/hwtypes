@@ -76,28 +76,6 @@ class Product(Tuple, metaclass=ProductMeta):
             d[k] = getattr(self, k)
         return MappingProxyType(d)
 
-    @classmethod
-    def from_fields(cls,
-            class_name: str,
-            fields: tp.Mapping[str, type],
-            module: tp.Optional[str] = None,
-            qualname: tp.Optional[str] = None):
-        if cls.is_bound:
-            raise TypeError('Type must not be bound')
-
-        ns = {}
-
-        if module is None:
-            module = cls.__module__
-
-        if qualname is None:
-            qualname = class_name
-
-        ns['__module__'] = module
-        ns['__qualname__'] = qualname
-
-        return cls._from_fields(fields, class_name, (cls,), ns)
-
 class Sum(metaclass=SumMeta):
     def __init__(self, value):
         if not isinstance(value, tuple(type(self).fields)):
