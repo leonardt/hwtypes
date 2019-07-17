@@ -78,9 +78,7 @@ class Product(Tuple, metaclass=ProductMeta):
 
 class Sum(metaclass=SumMeta):
     def __init__(self, value):
-        if not isinstance(value, tuple(type(self).fields)):
-            raise TypeError(f'Value {value} is not of types {type(self).fields}')
-        self._value = value
+        self.value = value
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and self.value == other.value
@@ -94,6 +92,12 @@ class Sum(metaclass=SumMeta):
     @property
     def value(self):
         return self._value
+
+    @value.setter
+    def value(self, value):
+        if not isinstance(value, tuple(type(self).fields)):
+            raise TypeError(f'Value {value} is not of types {type(self).fields}')
+        self._value = value
 
     def match(self):
         return type(self.value), self.value

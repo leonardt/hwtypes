@@ -358,6 +358,28 @@ def __init__(self, {type_sig}):
         return cls.unbound_t.from_fields(cls.__name__, new_fields, cls.__module__, cls.__qualname__)
 
 class SumMeta(BoundMeta):
+    def __new__(mcs, name, bases, namespace, fields=None, **kwargs):
+        def _make_prop(field_type):
+            @TypedProperty(field_type)
+            def prop(self):
+                return self.value_dict[field_type.__name__]
+
+            @prop.setter
+            def prop(self, value):
+                self.value = value
+
+            return prop
+
+        if fields is not None:
+            for field in fields:
+                if field.__name__ in _RESERVED_NAMES:
+                    raise ReservedNameError(f'Field name {field.__name__} is reserved by the type machinery')
+                elif field.__name__ in namespace:
+                    raise TypeError(f'Field name {field.__name__} cannot be used as a class attribute')
+                namespace[field.__name__] = _make_prop(field)
+
+        return super().__new__(mcs, name, bases, namespace, fields, **kwargs)
+
     def _fields_cb(cls, idx):
         return frozenset(idx)
 
