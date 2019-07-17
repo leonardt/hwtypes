@@ -170,12 +170,32 @@ def test_sum():
     assert isinstance(Su(En1.a), Su)
     assert isinstance(Su(En1.a), Sum)
 
+    assert Su.En1 == En1
+    assert Su.Pr == Pr
+
     assert Su.field_dict == {'En1' : En1, 'Pr' : Pr}
-    assert Su(En1.a).value_dict == {'En1' : En1.a, 'Pr' : None}
 
     with pytest.raises(TypeError):
         Su(1)
 
+    s = Su(En1.a)
+    assert s.value == En1.a
+    assert s.En1 == s.value
+    assert s.Pr is None
+    assert s.value_dict == {'En1' : En1.a, 'Pr' : None}
+
+    s.value = En1.b
+    assert s.value == En1.b
+    s.Pr = Pr(En1.a, En2.c)
+    assert s.value == Pr(En1.a, En2.c)
+    assert s.En1 is None
+    assert s.Pr == s.value
+
+    with pytest.raises(TypeError):
+        s.En1 = En2.c
+
+    with pytest.raises(TypeError):
+        s.Pr = En1.a
 
 def test_new():
     t = new(Tuple)
