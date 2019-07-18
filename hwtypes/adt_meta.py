@@ -348,7 +348,11 @@ def __init__(self, {type_sig}):
                 new_fields[field] = T.rebind(A, B)
             else:
                 new_fields[field] = T
-        return cls.unbound_t.from_fields(cls.__name__, new_fields, cls.__module__, cls.__qualname__)
+
+        if new_fields != cls.field_dict:
+            return cls.unbound_t.from_fields(cls.__name__, new_fields, cls.__module__, cls.__qualname__)
+        else:
+            return cls
 
 class SumMeta(BoundMeta):
     def __new__(mcs, name, bases, namespace, fields=None, **kwargs):
