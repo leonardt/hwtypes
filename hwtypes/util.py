@@ -1,3 +1,5 @@
+import typing as tp
+
 class TypedProperty:
     '''
     Behaves mostly like property except:
@@ -82,3 +84,10 @@ class TypedProperty:
 
     def deleter(self, fdel):
         return type(self)(self.T)(self.fget, self.fset, fdel, self.__doc__)
+
+
+def _issubclass(sub : tp.Any, parent : type) -> bool:
+    try:
+        return issubclass(sub, parent)
+    except TypeError:
+        return False

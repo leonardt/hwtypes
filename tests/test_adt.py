@@ -2,6 +2,8 @@ import pytest
 from hwtypes.adt import Product, Sum, Enum, Tuple
 from hwtypes.adt_meta import _RESERVED_NAMES, ReservedNameError
 from hwtypes.modifiers import new
+from hwtypes.adt_util import rebind_bitvector
+from hwtypes.bit_vector import AbstractBitVector, BitVector
 
 class En1(Enum):
     a = 0
@@ -281,3 +283,29 @@ def test_rebind_recusrive():
     P4 = P3.rebind(C, D)
     assert P4.C == D
     assert D in P4.S1.fields
+    P5 = P2.rebind(P1, A)
+    assert P5.S1 == Sum[C, A]
+
+
+class F(Product):
+    Y = AbstractBitVector
+
+
+class P(Product):
+    X = AbstractBitVector[16]
+    S = Sum[AbstractBitVector[4], AbstractBitVector[8]]
+    T = Tuple[AbstractBitVector[32]]
+    F = F
+
+
+def test_rebind_bv():
+    P_bound = rebind_bitvector(P, BitVector)
+    assert P_bound.X == BitVector[16]
+    assert P_bound.S == Sum[BitVector[4], BitVector[8]]
+    assert P_bound.T[0] == BitVector[32]
+    assert P_bound.F.Y == BitVector
+
+    P_unbound = rebind_bitvector(P_bound, AbstractBitVector)
+    assert P_unbound.X == AbstractBitVector[16]
+    assert P_unbound.S == Sum[AbstractBitVector[4], AbstractBitVector[8]]
+    assert P_unbound.T[0] == AbstractBitVector[32]

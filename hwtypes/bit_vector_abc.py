@@ -5,6 +5,7 @@ import functools as ft
 import weakref
 import warnings
 
+from .util import _issubclass
 
 TypeFamily = namedtuple('TypeFamily', ['Bit', 'BitVector', 'Unsigned', 'Signed'])
 
