@@ -12,13 +12,6 @@ from .util import TypedProperty
 __all__ = ['BoundMeta', 'TupleMeta', 'ProductMeta', 'SumMeta', 'EnumMeta']
 
 
-def _issubclass(sub : tp.Any, parent : type) -> bool:
-    try:
-        return issubclass(sub, parent)
-    except TypeError:
-        return False
-
-
 def _is_dunder(name):
     return (len(name) > 4
             and name[:2] == name[-2:] == '__'
