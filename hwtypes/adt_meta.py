@@ -106,13 +106,14 @@ class BoundMeta(type): #, metaclass=ABCMeta):
         return tuple(idx)
 
     def __getitem__(cls, idx) -> 'BoundMeta':
+        mcs = type(cls)
         if not isinstance(idx, tp.Iterable):
             idx = idx,
 
         idx = cls._fields_cb(idx)
 
         try:
-            return BoundMeta._class_cache[cls, idx]
+            return mcs._class_cache[cls, idx]
         except KeyError:
             pass
 
@@ -123,9 +124,9 @@ class BoundMeta(type): #, metaclass=ABCMeta):
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, BoundMeta))
         bases = tuple(bases)
         class_name = '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
-        t = type(cls)(class_name, bases, {}, fields=idx)
+        t = mcs(class_name, bases, {}, fields=idx)
         t.__module__ = cls.__module__
-        BoundMeta._class_cache[cls, idx] = t
+        mcs._class_cache[cls, idx] = t
         return t
 
     @property
@@ -215,6 +216,17 @@ class ProductMeta(TupleMeta):
 
     @classmethod
     def _from_fields(mcs, fields, name, bases, ns, **kwargs):
+        cache_idx = (tuple(fields.items()),
+                name,
+                bases,
+                frozenset(ns.items()),
+                frozenset(kwargs.items()),)
+
+        try:
+            return mcs._class_cache[cache_idx]
+        except KeyError:
+            pass
+
         # not strictly necessary could iterative over class dict finding
         # TypedProperty to reconstruct _field_table_ but that seems bad
         if '_field_table_' in ns:
@@ -297,6 +309,7 @@ def __init__(self, {type_sig}):
         if product_base is not None and not product_base.is_bound:
             t._unbound_base_ = product_base
 
+        mcs._class_cache[cache_idx] = t
         return t
 
 

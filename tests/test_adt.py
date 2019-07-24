@@ -132,6 +132,7 @@ def test_product():
         p[0] = En2.c
 
     assert Pr != Pr2
+    assert Pr is Product.from_fields('Pr', Pr.field_dict, module=__name__)
     assert Pr.field_dict == Pr2.field_dict
     assert Pr.field_dict != Pr3.field_dict
 
@@ -146,11 +147,18 @@ def test_product_from_fields():
     assert P.__module__ == Product.__module__
     assert P.__qualname__ == 'P'
 
-    P = Product.from_fields('P', {'A' : int, 'B' : str}, module='foo')
-    assert P.__module__ == 'foo'
+    assert P is Product.from_fields('P', {'A' : int, 'B' : str})
 
-    P = Product.from_fields('P', {'A' : int, 'B' : str}, qualname='Foo.P')
-    assert P.__qualname__ == 'Foo.P'
+    P2 = Product.from_fields('P', {'A' : int, 'B' : str}, module='foo')
+    assert P2.__module__ == 'foo'
+
+    assert P2 is not P
+
+    P3 = Product.from_fields('P', {'A' : int, 'B' : str}, qualname='Foo.P')
+    assert P3.__qualname__ == 'Foo.P'
+
+    assert P3 is not P1
+    assert P3 is not P2
 
     with pytest.raises(TypeError):
         Pr.from_fields('P', {'A' : int, 'B' : str})
