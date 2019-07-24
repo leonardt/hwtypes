@@ -1,4 +1,43 @@
+from collections import OrderedDict
+from collections.abc import Mapping, MutableMapping
 import typing as tp
+
+class FrozenDict(Mapping):
+    __slots__ = '_d', '_hash'
+
+    def __init__(self, *args, **kwargs):
+        self._d = dict(*args, **kwargs)
+        self._hash = hash(frozenset(self.items()))
+
+    def __getitem__(self, key):
+        return self._d.__getitem__(key)
+
+    def __iter__(self):
+        return self._d.__iter__()
+
+    def __len__(self):
+        return self._d.__len__()
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self._d == other._d
+        else:
+            return self._d == other
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        return self._hash
+
+
+class OrderedFrozenDict(FrozenDict):
+    __slots__ = ()
+
+    def __init__(self, *args, **kwargs):
+        self._d = OrderedDict(*args, **kwargs)
+        self._hash = hash(tuple(self.items()))
+
 
 class TypedProperty:
     '''

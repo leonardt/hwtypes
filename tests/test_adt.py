@@ -1,6 +1,6 @@
 import pytest
 from hwtypes.adt import Product, Sum, Enum, Tuple
-from hwtypes.adt_meta import _RESERVED_NAMES, ReservedNameError
+from hwtypes.adt_meta import RESERVED_ATTRS, ReservedNameError
 from hwtypes.modifiers import new
 from hwtypes.adt_util import rebind_bitvector
 from hwtypes.bit_vector import AbstractBitVector, BitVector
@@ -20,7 +20,7 @@ class En3(Enum):
     f = 4
 
 
-class Pr(Product):
+class Pr(Product, cache=True):
     x = En1
     y = En2
 
@@ -132,7 +132,7 @@ def test_product():
         p[0] = En2.c
 
     assert Pr != Pr2
-    assert Pr is Product.from_fields('Pr', Pr.field_dict, module=__name__)
+    assert Pr is Product.from_fields('Pr', {'x' : En1, 'y' : En2 }, cache=True)
     assert Pr.field_dict == Pr2.field_dict
     assert Pr.field_dict != Pr3.field_dict
 
@@ -143,20 +143,14 @@ def test_product_from_fields():
     assert issubclass(P, Tuple[int, str])
     assert P.A == int
     assert P.B == str
-    assert P.__name__ == 'P'
     assert P.__module__ == Product.__module__
-    assert P.__qualname__ == 'P'
 
     assert P is Product.from_fields('P', {'A' : int, 'B' : str})
 
-    P2 = Product.from_fields('P', {'A' : int, 'B' : str}, module='foo')
-    assert P2.__module__ == 'foo'
-
+    P2 = Product.from_fields('P', {'B' : str, 'A' : int})
     assert P2 is not P
 
-    P3 = Product.from_fields('P', {'A' : int, 'B' : str}, qualname='Foo.P')
-    assert P3.__qualname__ == 'Foo.P'
-
+    P3 = Product.from_fields('P', {'A' : int, 'B' : str}, cache=False)
     assert P3 is not P1
     assert P3 is not P2
 
@@ -237,7 +231,7 @@ def test_repr(T):
 
 
 @pytest.mark.parametrize("T_field", [(Enum, '0'), (Product, 'int')])
-@pytest.mark.parametrize("field_name", list(_RESERVED_NAMES))
+@pytest.mark.parametrize("field_name", list(RESERVED_ATTRS))
 def test_reserved(T_field, field_name):
     T, field = T_field
     l_dict = {'T' : T}
