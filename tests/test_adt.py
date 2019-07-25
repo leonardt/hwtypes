@@ -1,9 +1,8 @@
 import pytest
 from hwtypes.adt import Product, Sum, Enum, Tuple
-from hwtypes.adt_meta import _RESERVED_NAMES, ReservedNameError
+from hwtypes.adt_meta import RESERVED_ATTRS, ReservedNameError
 from hwtypes.modifiers import new
 from hwtypes.adt_util import rebind_bitvector
-from hwtypes.bit_vector import AbstractBitVector, BitVector
 
 class En1(Enum):
     a = 0
@@ -15,12 +14,7 @@ class En2(Enum):
     d = 1
 
 
-class En3(Enum):
-    e = 3
-    f = 4
-
-
-class Pr(Product):
+class Pr(Product, cache=True):
     x = En1
     y = En2
 
@@ -132,6 +126,7 @@ def test_product():
         p[0] = En2.c
 
     assert Pr != Pr2
+    assert Pr is Product.from_fields('Pr', {'x' : En1, 'y' : En2 }, cache=True)
     assert Pr.field_dict == Pr2.field_dict
     assert Pr.field_dict != Pr3.field_dict
 
@@ -142,15 +137,16 @@ def test_product_from_fields():
     assert issubclass(P, Tuple[int, str])
     assert P.A == int
     assert P.B == str
-    assert P.__name__ == 'P'
     assert P.__module__ == Product.__module__
-    assert P.__qualname__ == 'P'
 
-    P = Product.from_fields('P', {'A' : int, 'B' : str}, module='foo')
-    assert P.__module__ == 'foo'
+    assert P is Product.from_fields('P', {'A' : int, 'B' : str})
 
-    P = Product.from_fields('P', {'A' : int, 'B' : str}, qualname='Foo.P')
-    assert P.__qualname__ == 'Foo.P'
+    P2 = Product.from_fields('P', {'B' : str, 'A' : int})
+    assert P2 is not P
+
+    P3 = Product.from_fields('P', {'A' : int, 'B' : str}, cache=False)
+    assert P3 is not P
+    assert P3 is not P2
 
     with pytest.raises(TypeError):
         Pr.from_fields('P', {'A' : int, 'B' : str})
@@ -229,7 +225,7 @@ def test_repr(T):
 
 
 @pytest.mark.parametrize("T_field", [(Enum, '0'), (Product, 'int')])
-@pytest.mark.parametrize("field_name", list(_RESERVED_NAMES))
+@pytest.mark.parametrize("field_name", list(RESERVED_ATTRS))
 def test_reserved(T_field, field_name):
     T, field = T_field
     l_dict = {'T' : T}
@@ -252,60 +248,3 @@ def test_unbound_t(t, base):
     with pytest.raises(AttributeError):
         sub_t.unbound_t
 
-@pytest.mark.parametrize("T", [Tu, Su, Pr])
-def test_rebind(T):
-    assert En1 in T.fields
-    assert En3 not in T.fields
-    T2 = T.rebind(En1, En3)
-    assert En1 not in T2.fields
-    assert En3 in T2.fields
-
-
-class A: pass
-class B: pass
-class C: pass
-class D: pass
-class P1(Product):
-    A = A
-    B = B
-
-S1 = Sum[C, P1]
-
-class P2(Product):
-    S1 = S1
-    C = C
-
-def test_rebind_recusrive():
-    P3 = P2.rebind(A, D)
-    assert P3.S1.field_dict['P1'].A == D
-    assert P3.S1.field_dict['P1'].B == B
-    assert C in P3.S1.fields
-    P4 = P3.rebind(C, D)
-    assert P4.C == D
-    assert D in P4.S1.fields
-    P5 = P2.rebind(P1, A)
-    assert P5.S1 == Sum[C, A]
-
-
-class F(Product):
-    Y = AbstractBitVector
-
-
-class P(Product):
-    X = AbstractBitVector[16]
-    S = Sum[AbstractBitVector[4], AbstractBitVector[8]]
-    T = Tuple[AbstractBitVector[32]]
-    F = F
-
-
-def test_rebind_bv():
-    P_bound = rebind_bitvector(P, BitVector)
-    assert P_bound.X == BitVector[16]
-    assert P_bound.S == Sum[BitVector[4], BitVector[8]]
-    assert P_bound.T[0] == BitVector[32]
-    assert P_bound.F.Y == BitVector
-
-    P_unbound = rebind_bitvector(P_bound, AbstractBitVector)
-    assert P_unbound.X == AbstractBitVector[16]
-    assert P_unbound.S == Sum[AbstractBitVector[4], AbstractBitVector[8]]
-    assert P_unbound.T[0] == AbstractBitVector[32]
