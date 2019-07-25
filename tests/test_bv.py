@@ -107,3 +107,14 @@ def test_deprecated(val):
     with pytest.warns(DeprecationWarning):
         BitVector(val)
 
+@pytest.mark.parametrize("val", [
+        BitVector.random(4),
+        BitVector.random(4).as_sint(),
+        BitVector.random(4).as_uint(),
+        [0,1,1,0],
+    ])
+def test_old_style(val):
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(TypeError):
+            BitVector(val, 4)
+
