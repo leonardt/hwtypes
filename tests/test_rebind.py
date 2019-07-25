@@ -2,7 +2,8 @@ import pytest
 
 from hwtypes.adt import Product, Sum, Enum, Tuple
 from hwtypes.adt_util import rebind_bitvector
-from hwtypes.bit_vector import AbstractBitVector, BitVector
+from hwtypes.bit_vector import AbstractBitVector, BitVector, AbstractBit, Bit
+from hwtypes.smt_bit_vector import SMTBit
 from hwtypes.util import _issubclass
 
 class A: pass
@@ -139,3 +140,10 @@ def test_rebind_bv():
     assert P_unbound.X == AbstractBitVector[16]
     assert P_unbound.S == Sum[AbstractBitVector[4], AbstractBitVector[8]]
     assert P_unbound.T[0] == AbstractBitVector[32]
+
+def test_issue_74():
+    class A(Product):
+        a = Bit
+
+    A_smt = A.rebind(AbstractBit, SMTBit, True)
+    assert A_smt.a is SMTBit
