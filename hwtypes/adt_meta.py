@@ -8,6 +8,7 @@ from collections.abc import Mapping, MutableMapping
 from collections import OrderedDict
 from .util import TypedProperty
 from .util import OrderedFrozenDict
+from .util import _issubclass
 
 __all__ = ['BoundMeta', 'TupleMeta', 'ProductMeta', 'SumMeta', 'EnumMeta']
 
@@ -172,13 +173,13 @@ class BoundMeta(type): #, metaclass=ABCMeta):
     def __repr__(cls):
         return f"{cls.__name__}"
 
-    def rebind(cls, A : type, B : type):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
         new_fields = []
         for T in cls.fields:
-            if T == A:
+            if T == A or (rebind_sub_types and _issubclass(T,A)):
                 new_fields.append(B)
             elif isinstance(T, BoundMeta):
-                new_fields.append(T.rebind(A, B))
+                new_fields.append(T.rebind(A, B, rebind_sub_types))
             else:
                 new_fields.append(T)
         return cls.unbound_t[new_fields]
@@ -372,13 +373,13 @@ def __init__(self, {type_sig}):
         return cls._from_fields(fields, name, (cls,), ns, cache)
 
 
-    def rebind(cls, A : type, B : type):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
         new_fields = OrderedDict()
         for field, T in cls.field_dict.items():
-            if T == A:
+            if T == A or (rebind_sub_types and _issubclass(T,A)):
                 new_fields[field] = B
             elif isinstance(T, BoundMeta):
-                new_fields[field] = T.rebind(A, B)
+                new_fields[field] = T.rebind(A, B, rebind_sub_types)
             else:
                 new_fields[field] = T
 
@@ -488,7 +489,7 @@ class EnumMeta(BoundMeta):
     def enumerate(cls):
         yield from cls.fields
 
-    def rebind(cls, A : type, B : type):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
         # Enums aren't bound to types
         # could potentialy rebind values but that seems annoying
         return cls

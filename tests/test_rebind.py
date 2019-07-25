@@ -1,0 +1,141 @@
+import pytest
+
+from hwtypes.adt import Product, Sum, Enum, Tuple
+from hwtypes.adt_util import rebind_bitvector
+from hwtypes.bit_vector import AbstractBitVector, BitVector
+from hwtypes.util import _issubclass
+
+class A: pass
+class B: pass
+class C(A): pass
+class D(B): pass
+
+class E(Enum):
+    A = 0
+    B = 1
+    C = 2
+    E = 3
+
+T0 = Tuple[A, B, C, E]
+
+class P0(Product, cache=True):
+    A = A
+    B = B
+    C = C
+    E = E
+
+S0 = Sum[A, B, C, E]
+
+class P1(Product, cache=True):
+    P0 = P0
+    S0 = S0
+    T0 = T0
+    D  = D
+
+S1 = Sum[P0, S0, T0, D]
+
+
+
+@pytest.mark.parametrize("type_0", [A, B, C, D, E])
+@pytest.mark.parametrize("type_1", [A, B, C, D, E])
+@pytest.mark.parametrize("rebind_sub_types", [False, True])
+def test_rebind_enum(type_0, type_1, rebind_sub_types):
+    assert E is E.rebind(type_0, type_1, rebind_sub_types)
+
+
+@pytest.mark.parametrize("T", [T0, S0])
+@pytest.mark.parametrize("type_0", [A, B, C, D, E])
+@pytest.mark.parametrize("type_1", [A, B, C, D, E])
+@pytest.mark.parametrize("rebind_sub_types", [False, True])
+def test_rebind_sum_tuple(T, type_0, type_1, rebind_sub_types):
+    fields = T.fields
+    T_ = T.rebind(type_0, type_1, rebind_sub_types)
+
+    if rebind_sub_types:
+        map_fn = lambda s : type_1 if _issubclass(s, type_0) else s
+    else:
+        map_fn = lambda s : type_1 if s == type_0 else s
+
+    new_fields = map(map_fn, fields)
+
+    assert T_ is T.unbound_t[new_fields]
+
+
+@pytest.mark.parametrize("type_0", [A, B, C, D, E])
+@pytest.mark.parametrize("type_1", [A, B, C, D, E])
+@pytest.mark.parametrize("rebind_sub_types", [False, True])
+def test_rebind_product(type_0, type_1, rebind_sub_types):
+    field_dict = P0.field_dict
+    P_ = P0.rebind(type_0, type_1, rebind_sub_types)
+
+    if rebind_sub_types:
+        map_fn = lambda s : type_1 if _issubclass(s, type_0) else s
+    else:
+        map_fn = lambda s : type_1 if s == type_0 else s
+
+    new_fields = {}
+    for k,v in field_dict.items():
+        new_fields[k] = map_fn(v)
+
+    assert P_ is Product.from_fields('P0', new_fields)
+
+
+@pytest.mark.parametrize("rebind_sub_types", [False, True])
+def test_rebind_recursive(rebind_sub_types):
+    S_ = S1.rebind(B, A, rebind_sub_types)
+    if rebind_sub_types:
+        gold = Sum[
+            P0.rebind(B, A, rebind_sub_types),
+            S0.rebind(B, A, rebind_sub_types),
+            T0.rebind(B, A, rebind_sub_types),
+            A
+        ]
+    else:
+        gold = Sum[
+            P0.rebind(B, A, rebind_sub_types),
+            S0.rebind(B, A, rebind_sub_types),
+            T0.rebind(B, A, rebind_sub_types),
+            D
+        ]
+
+    assert S_ is gold
+
+    P_ = P1.rebind(B, A, rebind_sub_types)
+    if rebind_sub_types:
+        gold = Product.from_fields('P1', {
+            'P0' : P0.rebind(B, A, rebind_sub_types),
+            'S0' : S0.rebind(B, A, rebind_sub_types),
+            'T0' : T0.rebind(B, A, rebind_sub_types),
+            'D'  : A
+        })
+    else:
+        gold = Product.from_fields('P1', {
+            'P0' : P0.rebind(B, A, rebind_sub_types),
+            'S0' : S0.rebind(B, A, rebind_sub_types),
+            'T0' : T0.rebind(B, A, rebind_sub_types),
+            'D'  : D
+        })
+
+
+    assert P_ is gold
+
+
+class P(Product):
+    X = AbstractBitVector[16]
+    S = Sum[AbstractBitVector[4], AbstractBitVector[8]]
+    T = Tuple[AbstractBitVector[32]]
+    class F(Product):
+        Y = AbstractBitVector
+
+
+def test_rebind_bv():
+    P_bound = rebind_bitvector(P, BitVector)
+    assert P_bound.X == BitVector[16]
+    assert P_bound.S == Sum[BitVector[4], BitVector[8]]
+    assert P_bound.T[0] == BitVector[32]
+    assert P_bound.F.Y == BitVector
+
+    P_unbound = rebind_bitvector(P_bound, AbstractBitVector)
+    assert P_unbound.X == AbstractBitVector[16]
+    assert P_unbound.S == Sum[AbstractBitVector[4], AbstractBitVector[8]]
+    assert P_unbound.T[0] == AbstractBitVector[32]
