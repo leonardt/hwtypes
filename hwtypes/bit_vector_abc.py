@@ -41,7 +41,7 @@ class AbstractBitVectorMeta(ABCMeta):
             else:
                 raise TypeError('Cannot construct {} from {}'.format(cls, value))
 
-        return type(cls).__call__(cls[size], value)
+        return type(cls).__call__(cls[size], value, *args, **kwargs)
 
 
     def __new__(mcs, name, bases, namespace, info=(None, None), **kwargs):
