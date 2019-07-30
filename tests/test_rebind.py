@@ -130,13 +130,13 @@ class P(Product):
 
 
 def test_rebind_bv():
-    P_bound = rebind_bitvector(P, BitVector)
+    P_bound = rebind_bitvector(P, AbstractBitVector, BitVector)
     assert P_bound.X == BitVector[16]
     assert P_bound.S == Sum[BitVector[4], BitVector[8]]
     assert P_bound.T[0] == BitVector[32]
     assert P_bound.F.Y == BitVector
 
-    P_unbound = rebind_bitvector(P_bound, AbstractBitVector)
+    P_unbound = rebind_bitvector(P_bound, BitVector, AbstractBitVector)
     assert P_unbound.X == AbstractBitVector[16]
     assert P_unbound.S == Sum[AbstractBitVector[4], AbstractBitVector[8]]
     assert P_unbound.T[0] == AbstractBitVector[32]
