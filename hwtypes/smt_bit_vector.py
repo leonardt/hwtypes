@@ -48,7 +48,11 @@ def bit_cast(fn):
         if isinstance(other, SMTBit):
             return fn(self, other)
         else:
-            return fn(self, SMTBit(other))
+            try:
+                other = SMTBit(other)
+            except TypeError:
+                return NotImplemented
+            return fn(self, other)
     return wrapped
 
 class SMTBit(AbstractBit):
@@ -472,28 +476,139 @@ class SMTBitVector(AbstractBitVector):
     def bvsrem(self, other):
         return type(self)(smt.BVSRem(self.value, other.value))
 
-    __invert__ = bvnot
-    __and__ = bvand
-    __or__ = bvor
-    __xor__ = bvxor
+    def __invert__(self): return self.bvnot()
 
-    __lshift__ = bvshl
-    __rshift__ = bvlshr
+    def __and__(self, other):
+        try:
+            return self.bvand(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
-    __neg__ = bvneg
-    __add__ = bvadd
-    __sub__ = bvsub
-    __mul__ = bvmul
-    __floordiv__ = bvudiv
-    __mod__ = bvurem
+    def __or__(self, other):
+        try:
+            return self.bvor(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
-    __eq__ = bveq
-    __ne__ = bvne
-    __ge__ = bvuge
-    __gt__ = bvugt
-    __le__ = bvule
-    __lt__ = bvult
+    def __xor__(self, other):
+        try:
+            return self.bvxor(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
+
+    def __lshift__(self, other):
+        try:
+            return self.bvshl(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __rshift__(self, other):
+        try:
+            return self.bvlshr(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __neg__(self): return self.bvneg()
+
+    def __add__(self, other):
+        try:
+            return self.bvadd(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __sub__(self, other):
+        try:
+            return self.bvsub(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __mul__(self, other):
+        try:
+            return self.bvmul(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __floordiv__(self, other):
+        try:
+            return self.bvudiv(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __mod__(self, other):
+        try:
+            return self.bvurem(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+
+    def __eq__(self, other):
+        try:
+            return self.bveq(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __ne__(self, other):
+        try:
+            return self.bvne(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __ge__(self, other):
+        try:
+            return self.bvuge(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __gt__(self, other):
+        try:
+            return self.bvugt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __le__(self, other):
+        try:
+            return self.bvule(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __lt__(self, other):
+        try:
+            return self.bvult(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
 
     @int_cast
@@ -540,24 +655,60 @@ class SMTUIntVector(SMTNumVector):
 
 class SMTSIntVector(SMTNumVector):
     def __rshift__(self, other):
-        return self.bvashr(other)
+        try:
+            return self.bvashr(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __floordiv__(self, other):
-        return self.bvsdiv(other)
+        try:
+            return self.bvsdiv(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __mod__(self, other):
-        return self.bvsrem(other)
+        try:
+            return self.bvsrem(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __ge__(self, other):
-        return self.bvsge(other)
+        try:
+            return self.bvsge(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __gt__(self, other):
-        return self.bvsgt(other)
+        try:
+            return self.bvsgt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __lt__(self, other):
-        return self.bvslt(other)
+        try:
+            return self.bvslt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __le__(self, other):
-        return self.bvsle(other)
+        try:
+            return self.bvsle(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
 
 _Family_ = TypeFamily(SMTBit, SMTBitVector, SMTUIntVector, SMTSIntVector)
