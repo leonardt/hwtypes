@@ -9,6 +9,10 @@ from .util import _issubclass
 
 TypeFamily = namedtuple('TypeFamily', ['Bit', 'BitVector', 'Unsigned', 'Signed'])
 
+# Should be raised when bv[k].op(bv[j]) and j != k
+
+class InconsistentSizeError(TypeError): pass
+
 #I want to be able differentiate an old style call
 #BitVector(val, None) from BitVector(val)
 _MISSING = object()

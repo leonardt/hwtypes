@@ -1,5 +1,5 @@
 import typing as tp
-from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily
+from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily, InconsistentSizeError
 from .compatibility import IntegerTypes, StringTypes
 
 import functools
@@ -79,7 +79,9 @@ class Bit(AbstractBit):
         fb_t = type(f_branch)
         BV_t = self.get_family().BitVector
         if isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
-            if tb_t is not fb_t:
+            if tb_t.size != fb_t.size:
+                raise InconsistentSizeError('Both branches must have the same size')
+            elif tb_t is not fb_t:
                 raise TypeError('Both branches must have the same type')
             T = tb_t
         elif isinstance(t_branch, BV_t):
@@ -110,7 +112,7 @@ def _coerce(T : tp.Type['BitVector'], val : tp.Any) -> 'BitVector':
     if not isinstance(val, BitVector):
         return T(val)
     elif val.size != T.size:
-        raise TypeError('Inconsistent size')
+        raise InconsistentSizeError('Inconsistent size')
     else:
         return val
 
