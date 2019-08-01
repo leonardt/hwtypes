@@ -4,6 +4,7 @@ import random
 from itertools import product
 
 from hwtypes import BitVector, Bit
+from hwtypes.bit_vector_abc import InconsistentSizeError
 
 def _rand_bv(width):
     return BitVector[width](random.randint(0, (1 << width) - 1))
@@ -31,7 +32,7 @@ def test_bin(op, width1, width2, use_int):
         y = _rand_bv(width2)
         if width1 != width2:
             assert type(x) is not type(y)
-            with pytest.raises(TypeError):
+            with pytest.raises(InconsistentSizeError):
                 op(x, y)
         else:
             assert type(x) is type(y)
@@ -60,7 +61,7 @@ def test_comp(op, width1, width2, use_int):
         y = _rand_bv(width2)
         if width1 != width2:
             assert type(x) is not type(y)
-            with pytest.raises(TypeError):
+            with pytest.raises(InconsistentSizeError):
                 op(x, y)
         else:
             assert type(x) is type(y)
@@ -80,8 +81,12 @@ def test_ite(t_constructor, t_size, f_constructor, f_size):
     if t_constructor is f_constructor is _rand_bv and t_size == f_size:
         res = pred.ite(t, f)
         assert type(res) is type(t)
+    elif t_constructor is f_constructor is _rand_bv:
+        # BV with different size
+        with pytest.raises(InconsistentSizeError):
+            res = pred.ite(t, f)
     elif t_constructor is f_constructor:
-        # either both ints or BV with different size
+        # both int
         with pytest.raises(TypeError):
             res = pred.ite(t, f)
     elif t_constructor is _rand_bv:
