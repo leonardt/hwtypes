@@ -4,6 +4,7 @@ from hwtypes import Bit, AbstractBit
 import hwtypes.modifiers as modifiers
 from hwtypes.modifiers import make_modifier, is_modified, is_modifier
 from hwtypes.modifiers import get_modifier, get_unmodified
+from hwtypes.adt import Tuple, Product, Sum
 
 modifiers._DEBUG = True
 
@@ -40,6 +41,28 @@ def test_basic():
 
     with pytest.raises(TypeError):
         get_unmodified(Bit)
+
+
+def test_modify_adt():
+    Mod = make_modifier("Mod")
+
+    T = Tuple[int, str]
+    MT = Mod(T)
+    assert issubclass(MT, T)
+
+    class P(Product):
+        x = int
+        y = str
+
+    MP = Mod(P)
+    assert issubclass(MP, T)
+    assert issubclass(MP, P)
+    assert issubclass(MP, MT)
+
+    S = Sum[int, str]
+    MS = Mod(S)
+    assert issubclass(MS, S)
+    assert MS(0).value == 0
 
 
 def test_cache():
