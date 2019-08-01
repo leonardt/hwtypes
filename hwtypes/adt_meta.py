@@ -124,6 +124,12 @@ class BoundMeta(type): #, metaclass=ABCMeta):
         '''
         return tuple(idx)
 
+    def _name_cb(cls, idx):
+        '''
+        Gives subclasses a chance define their name based on their idx.
+        '''
+        return '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
+
     def __getitem__(cls, idx) -> 'BoundMeta':
         mcs = type(cls)
         if not isinstance(idx, tp.Iterable):
@@ -142,7 +148,7 @@ class BoundMeta(type): #, metaclass=ABCMeta):
         bases = [cls]
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, BoundMeta))
         bases = tuple(bases)
-        class_name = '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
+        class_name = cls._name_cb(idx)
 
         t = mcs(class_name, bases, {'__module__' : cls.__module__}, fields=idx)
         mcs._class_cache[cls, idx] = t
