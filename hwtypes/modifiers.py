@@ -93,6 +93,11 @@ def get_unmodified(T):
     else:
         raise TypeError(f'{T} has no modifiers')
 
+def get_all_modifiers(T):
+    if is_modified(T):
+        yield from get_all_modifiers(get_unmodified(T))
+        yield get_modifier(T)
+
 _mod_cache = weakref.WeakValueDictionary()
 # This is a factory for type modifiers.
 def make_modifier(name, cache=False):
