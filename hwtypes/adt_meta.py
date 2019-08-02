@@ -221,13 +221,6 @@ class ProductMeta(TupleMeta):
     def __new__(mcs, name, bases, namespace, cache=False, **kwargs):
         fields = {}
         ns = {}
-        for base in bases:
-            if base.is_bound:
-                for k,v in base.field_dict.items():
-                    if k in fields:
-                        raise TypeError(f'Conflicting definitions of field {k}')
-                    else:
-                        fields[k] = v
 
         for k, v in namespace.items():
             if k in RESERVED_SUNDERS:
