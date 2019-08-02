@@ -113,3 +113,18 @@ def make_modifier(name, cache=False):
         return _mod_cache.setdefault(name, ModType)
 
     return ModType
+
+def unwrap_modifier(T):
+    if not is_modified(T):
+        return T, []
+    mod = get_modifier(T)
+    unmod = get_unmodified(T)
+    unmod, mods = unwrap_modifier(unmod)
+    mods.append(mod)
+    return unmod, mods
+
+def wrap_modifier(T, mods):
+    wrapped = T
+    for mod in mods:
+        wrapped = mod(wrapped)
+    return wrapped
