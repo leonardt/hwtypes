@@ -1,10 +1,11 @@
 import pytest
 
 from hwtypes.adt import Product, Sum, Enum, Tuple
-from hwtypes.adt_util import rebind_bitvector
+from hwtypes.adt_util import rebind_bitvector, rebind_keep_modifiers
 from hwtypes.bit_vector import AbstractBitVector, BitVector, AbstractBit, Bit
-from hwtypes.smt_bit_vector import SMTBit
+from hwtypes.smt_bit_vector import SMTBit, SMTBitVector
 from hwtypes.util import _issubclass
+from hwtypes.modifiers import make_modifier
 
 class A: pass
 class B: pass
@@ -147,3 +148,14 @@ def test_issue_74():
 
     A_smt = A.rebind(AbstractBit, SMTBit, True)
     assert A_smt.a is SMTBit
+
+def test_rebind_mod():
+    M = make_modifier("M")
+    class A(Product):
+        a=M(Bit)
+        b=M(BitVector[4])
+
+    A_smt = rebind_bitvector(A,AbstractBitVector, SMTBitVector, True)
+    A_smt = rebind_keep_modifiers(A_smt, AbstractBit, SMTBit)
+    assert A_smt.b == M(SMTBitVector[4])
+    assert A_smt.a == M(SMTBit)

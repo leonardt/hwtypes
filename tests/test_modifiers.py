@@ -2,7 +2,7 @@ import pytest
 
 from hwtypes import Bit, AbstractBit
 import hwtypes.modifiers as modifiers
-from hwtypes.modifiers import make_modifier, is_modified, is_modifier
+from hwtypes.modifiers import make_modifier, is_modified, is_modifier, unwrap_modifier, wrap_modifier
 from hwtypes.modifiers import get_modifier, get_unmodified
 from hwtypes.adt import Tuple, Product, Sum
 
@@ -72,3 +72,13 @@ def test_cache():
 
     assert G1 is G2
     assert G1 is not G3
+
+def test_nested():
+    A = make_modifier("A")
+    B = make_modifier("B")
+    C = make_modifier("C")
+    ABCBit = C(B(A(Bit)))
+    base, mods = unwrap_modifier(ABCBit)
+    assert base is Bit
+    assert mods == [A,B,C]
+    assert wrap_modifier(Bit,mods) == ABCBit

@@ -93,6 +93,11 @@ def get_unmodified(T):
     else:
         raise TypeError(f'{T} has no modifiers')
 
+def get_all_modifiers(T):
+    if is_modified(T):
+        yield from get_all_modifiers(get_unmodified(T))
+        yield get_modifier(T)
+
 _mod_cache = weakref.WeakValueDictionary()
 # This is a factory for type modifiers.
 def make_modifier(name, cache=False):
@@ -108,3 +113,18 @@ def make_modifier(name, cache=False):
         return _mod_cache.setdefault(name, ModType)
 
     return ModType
+
+def unwrap_modifier(T):
+    if not is_modified(T):
+        return T, []
+    mod = get_modifier(T)
+    unmod = get_unmodified(T)
+    unmod, mods = unwrap_modifier(unmod)
+    mods.append(mod)
+    return unmod, mods
+
+def wrap_modifier(T, mods):
+    wrapped = T
+    for mod in mods:
+        wrapped = mod(wrapped)
+    return wrapped
