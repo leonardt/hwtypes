@@ -159,4 +159,3 @@ def test_rebind_mod():
     A_smt = rebind_keep_modifiers(A_smt, AbstractBit, SMTBit)
     assert A_smt.b == M(SMTBitVector[4])
     assert A_smt.a == M(SMTBit)
-test_rebind_mod()
