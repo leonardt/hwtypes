@@ -49,6 +49,8 @@ def test_modify_adt():
     T = Tuple[int, str]
     MT = Mod(T)
     assert issubclass(MT, T)
+    assert MT(0, 'y')[0] == 0
+    assert MT(0, 'y')[1] == 'y'
 
     class P(Product):
         x = int
@@ -58,11 +60,14 @@ def test_modify_adt():
     assert issubclass(MP, T)
     assert issubclass(MP, P)
     assert issubclass(MP, MT)
+    assert MP(x=0, y='y').y == 'y'
+    assert MP(y='y', x=0).x == 0
 
     S = Sum[int, str]
     MS = Mod(S)
     assert issubclass(MS, S)
-    assert MS(0).value == 0
+    assert MS(0)[int] == 0
+    assert MS('x')[str] == 'x'
 
 
 def test_cache():

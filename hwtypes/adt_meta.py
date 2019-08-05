@@ -41,11 +41,11 @@ RESERVED_NAMES = frozenset({
     'field_dict',
     'is_bound',
     'is_cached',
-    'value',
     'value_dict',
 })
 
 RESERVED_SUNDERS = frozenset({
+    '_value_',
     '_cached_',
     '_fields_',
     '_field_table_',
@@ -388,28 +388,17 @@ def __init__(self, {type_sig}):
             return cls
 
 class SumMeta(BoundMeta):
-    def __new__(mcs, name, bases, namespace, fields=None, **kwargs):
-        def _make_prop(field_type):
-            @TypedProperty(field_type)
-            def prop(self):
-                return self.value_dict[field_type.__name__]
+    def __getitem__(cls, T):
+        if cls.is_bound:
+            if T in cls:
+                return T
+            else:
+                raise KeyError(f'{T} not in {cls}')
+        else:
+            return super().__getitem__(T)
 
-            @prop.setter
-            def prop(self, value):
-                self.value = value
-
-            return prop
-
-        if fields is not None:
-            for field in fields:
-                fname = field.__name__
-                if fname in RESERVED_ATTRS:
-                    raise ReservedNameError(f'Field name {fname} is reserved by the type machinery')
-                elif fname in namespace:
-                    raise TypeError(f'Field name {fname} cannot be used as a class attribute')
-                namespace[fname] = _make_prop(field)
-
-        return super().__new__(mcs, name, bases, namespace, fields, **kwargs)
+    def __contains__(cls, T):
+        return T in cls.fields
 
     def _fields_cb(cls, idx):
         return frozenset(idx)
