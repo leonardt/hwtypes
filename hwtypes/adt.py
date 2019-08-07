@@ -63,7 +63,7 @@ class Tuple(metaclass=TupleMeta):
 
     @property
     def value(self):
-        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning)
+        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
         return self._value_
 
 class Product(Tuple, metaclass=ProductMeta):
@@ -96,7 +96,7 @@ class Sum(metaclass=SumMeta):
         return hash(self._value_)
 
     def __getitem__(self, T):
-        if T in self:
+        if self.match(T):
             return self._value_
         else:
             raise KeyError(f"Can't get {T} from {type(self._value_)}")
@@ -109,7 +109,7 @@ class Sum(metaclass=SumMeta):
         else:
             self._value_ = value
 
-    def __contains__(self, T):
+    def match(self, T):
         cls = type(self)
         if T in cls:
             return isinstance(self._value_, T)
@@ -123,7 +123,7 @@ class Sum(metaclass=SumMeta):
     def value_dict(self):
         d = {}
         for k,t in type(self).field_dict.items():
-            if t in self:
+            if self.match(t):
                 d[k] = self._value_
             else:
                 d[k] = None
@@ -131,7 +131,7 @@ class Sum(metaclass=SumMeta):
 
     @property
     def value(self):
-        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning)
+        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
         return self._value_
 
 class Enum(metaclass=EnumMeta):
@@ -170,7 +170,7 @@ class Enum(metaclass=EnumMeta):
 
     @property
     def value(self):
-        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning)
+        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 3)
         return self._value_
 
 def new_instruction():

@@ -183,10 +183,10 @@ def test_sum():
         Su(1)
 
     s = Su(En1.a)
-    assert En1 in s
-    assert Pr not in s
+    assert s.match(En1)
+    assert not s.match(Pr)
     with pytest.raises(TypeError):
-        En2 in s
+        s.match(En2)
 
     assert s[En1] == En1.a
 
@@ -200,8 +200,8 @@ def test_sum():
     assert s[En1] == En1.b
 
     s[Pr] = Pr(En1.a, En2.c)
-    assert Pr in s
-    assert En1 not in s
+    assert s.match(Pr)
+    assert not s.match(En1)
     assert s[Pr] == Pr(En1.a, En2.c)
 
     with pytest.raises(KeyError):

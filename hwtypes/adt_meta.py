@@ -340,7 +340,10 @@ def __init__(self, {type_sig}):
 
     def __getitem__(cls, idx):
         if cls.is_bound:
-            return cls.fields[idx]
+            if isinstance(idx, str):
+                return cls.field_dict[idx]
+            else:
+                return super().__getitem__(idx)
         else:
             raise TypeError("Cannot bind product types with getitem")
 
