@@ -112,6 +112,10 @@ class Bit(AbstractBit):
     def __hash__(self) -> int:
         return hash(self._value)
 
+    @staticmethod
+    def random(cls) -> AbstractBit:
+        return cls(random.getrandbits(1))
+
 def _coerce(T : tp.Type['BitVector'], val : tp.Any) -> 'BitVector':
     if not isinstance(val, BitVector):
         return T(val)
