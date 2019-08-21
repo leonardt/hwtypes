@@ -248,13 +248,13 @@ class BitVector(AbstractBitVector):
 
     @bv_cast
     def bvrol(self, other):
-        other = other.as_uint() % len(self)
-        return self[:other].concat(self[other:])
+        other = (len(self) - other.as_uint()) % len(self)
+        return self[other:].concat(self[:other])
 
     @bv_cast
     def bvror(self, other):
-        other = (len(self) - other.as_uint()) % len(self)
-        return self[:other].concat(self[other:])
+        other = other.as_uint() % len(self)
+        return self[other:].concat(self[:other])
 
     @bv_cast
     def bvcomp(self, other):
