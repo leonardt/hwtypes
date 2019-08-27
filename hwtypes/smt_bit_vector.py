@@ -134,10 +134,13 @@ class SMTBit(AbstractBit):
         return type(self)(smt.Xor(self.value, other.value))
 
     def ite(self, t_branch, f_branch):
+        cls = type(self)
         tb_t = type(t_branch)
         fb_t = type(f_branch)
         BV_t = self.get_family().BitVector
-        if isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
+        if isinstance(t_branch, cls) and isinstance(f_branch, cls):
+            T = tb_t
+        elif isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
             if tb_t.size != fb_t.size:
                 raise InconsistentSizeError('Both branches must have the same size')
             elif tb_t is not fb_t:
