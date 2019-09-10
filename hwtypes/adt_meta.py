@@ -179,12 +179,12 @@ class BoundMeta(type): #, metaclass=ABCMeta):
     def __repr__(cls):
         return f"{cls.__name__}"
 
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         new_fields = []
         for T in cls.fields:
             if T == A or (rebind_sub_types and _issubclass(T,A)):
                 new_fields.append(B)
-            elif isinstance(T, BoundMeta):
+            elif rebind_recursive and isinstance(T, BoundMeta):
                 new_fields.append(T.rebind(A, B, rebind_sub_types))
             else:
                 new_fields.append(T)
@@ -375,12 +375,12 @@ def __init__(self, {type_sig}):
         return cls._from_fields(fields, name, (cls,), ns, cache)
 
 
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         new_fields = OrderedDict()
         for field, T in cls.field_dict.items():
             if T == A or (rebind_sub_types and _issubclass(T,A)):
                 new_fields[field] = B
-            elif isinstance(T, BoundMeta):
+            elif rebind_recursive and isinstance(T, BoundMeta):
                 new_fields[field] = T.rebind(A, B, rebind_sub_types)
             else:
                 new_fields[field] = T
@@ -480,7 +480,7 @@ class EnumMeta(BoundMeta):
     def enumerate(cls):
         yield from cls.fields
 
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         # Enums aren't bound to types
         # could potentialy rebind values but that seems annoying
         return cls
