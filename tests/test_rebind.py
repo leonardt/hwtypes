@@ -159,3 +159,17 @@ def test_rebind_mod():
     A_smt = rebind_keep_modifiers(A_smt, AbstractBit, SMTBit)
     assert A_smt.b == M(SMTBitVector[4])
     assert A_smt.a == M(SMTBit)
+
+#Tests an issue with rebind_bitvector and Sum
+#The issue:
+#   If we had Sum[A,B] and A was contained within B
+#   (like a field of a Tuple or Product), rebind would fail non-deterministically.
+def test_sum_issue():
+    for _ in range(1000):
+        BV = BitVector
+        SBV = SMTBitVector
+        T = Tuple[BV[8],BV[1]]
+        T_smt = rebind_bitvector(T,AbstractBitVector,SMTBitVector, True)
+        S = Sum[T,BV[8]]
+        S_smt = rebind_bitvector(S,AbstractBitVector,SMTBitVector, True)
+        assert T_smt in S_smt.fields
