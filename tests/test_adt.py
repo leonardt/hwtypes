@@ -66,6 +66,8 @@ def test_tuple():
     assert issubclass(Tu, Tuple)
     assert isinstance(Tu(En1.a, En2.c), Tuple)
     assert isinstance(Tu(En1.a, En2.c), Tu)
+    assert Tu[0] == En1
+    assert Tu[1] == En2
 
     t = Tu(En1.a, En2.c)
     assert (t[0],t[1]) == (En1.a,En2.c)
