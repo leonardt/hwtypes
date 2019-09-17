@@ -66,8 +66,8 @@ def test_modify_adt():
     S = Sum[int, str]
     MS = Mod(S)
     assert issubclass(MS, S)
-    assert MS(0)[int] == 0
-    assert MS('x')[str] == 'x'
+    assert MS(0)[int].value == 0
+    assert MS('x')[str].value == 'x'
 
 
 def test_cache():

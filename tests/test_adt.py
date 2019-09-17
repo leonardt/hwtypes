@@ -183,29 +183,29 @@ def test_sum():
         Su(1)
 
     s = Su(En1.a)
-    assert s.match(En1)
-    assert not s.match(Pr)
+    assert s[En1].match
+    assert not s[Pr].match
     with pytest.raises(TypeError):
-        s.match(En2)
+        s[En2].match
 
-    assert s[En1] == En1.a
+    assert s[En1].value == En1.a
 
-    with pytest.raises(KeyError):
-        s[Pr]
+    with pytest.raises(TypeError):
+        s[Pr].value
 
 
     assert s.value_dict == {'En1' : En1.a, 'Pr' : None}
 
     s[En1] = En1.b
-    assert s[En1] == En1.b
+    assert s[En1].value == En1.b
 
     s[Pr] = Pr(En1.a, En2.c)
-    assert s.match(Pr)
-    assert not s.match(En1)
-    assert s[Pr] == Pr(En1.a, En2.c)
+    assert s[Pr].match
+    assert not s[En1].match
+    assert s[Pr].value == Pr(En1.a, En2.c)
 
-    with pytest.raises(KeyError):
-        s[En1]
+    with pytest.raises(TypeError):
+        s[En1].value
 
     with pytest.raises(TypeError):
         s[En1] = En2.c

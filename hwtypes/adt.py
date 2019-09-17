@@ -78,6 +78,23 @@ class Product(Tuple, metaclass=ProductMeta):
         return MappingProxyType(d)
 
 class Sum(metaclass=SumMeta):
+    class Match:
+        __slots__ = ('_T', '_value')
+        def __init__(self, T: type, value: 'T'):
+            self._T = T
+            self._value = value
+
+        @property
+        def match(self) -> bool:
+            return isinstance(self._value, self._T)
+
+        @property
+        def value(self):
+            if self.match:
+                return self._value
+            else:
+                raise TypeError(f"Can't get {self._T} from {type(self._value)}")
+
     def __init__(self, value):
         if type(value) not in type(self):
             raise TypeError(f'Value {value} is not of types {type(self).fields}')
@@ -95,11 +112,13 @@ class Sum(metaclass=SumMeta):
     def __hash__(self):
         return hash(self._value_)
 
-    def __getitem__(self, T):
-        if self.match(T):
-            return self._value_
+    def __getitem__(self, T) -> 'Sum.Match':
+        cls = type(self)
+        if T in cls:
+            return cls.Match(T, self._value_)
         else:
-            raise KeyError(f"Can't get {T} from {type(self._value_)}")
+            raise TypeError(f'{T} not in {cls}')
+
 
     def __setitem__(self, T, value):
         if T not in type(self):
@@ -109,13 +128,6 @@ class Sum(metaclass=SumMeta):
         else:
             self._value_ = value
 
-    def match(self, T):
-        cls = type(self)
-        if T in cls:
-            return isinstance(self._value_, T)
-        else:
-            raise TypeError(f'{T} not in {cls}')
-
     def __repr__(self) -> str:
         return f'{type(self)}({self._value_})'
 
@@ -123,7 +135,7 @@ class Sum(metaclass=SumMeta):
     def value_dict(self):
         d = {}
         for k,t in type(self).field_dict.items():
-            if self.match(t):
+            if self[t].match:
                 d[k] = self._value_
             else:
                 d[k] = None
