@@ -79,21 +79,22 @@ class Product(Tuple, metaclass=ProductMeta):
 
 class Sum(metaclass=SumMeta):
     class Match:
-        __slots__ = ('_T', '_value')
-        def __init__(self, T: type, value: 'T'):
-            self._T = T
+        __slots__ = ('_match', '_value', '_safe')
+        def __init__(self, match, value, *, safe: bool = True):
+            self._match = match
             self._value = value
+            self._safe = safe
 
         @property
-        def match(self) -> bool:
-            return isinstance(self._value, self._T)
+        def match(self):
+            return self._match
 
         @property
         def value(self):
-            if self.match:
+            if not self._safe or self.match:
                 return self._value
             else:
-                raise TypeError(f"Can't get {self._T} from {type(self._value)}")
+                raise TypeError(f'No value for unmatched type')
 
     def __init__(self, value):
         if type(value) not in type(self):
@@ -115,7 +116,7 @@ class Sum(metaclass=SumMeta):
     def __getitem__(self, T) -> 'Sum.Match':
         cls = type(self)
         if T in cls:
-            return cls.Match(T, self._value_)
+            return cls.Match(isinstance(self._value_, T), self._value_)
         else:
             raise TypeError(f'{T} not in {cls}')
 
