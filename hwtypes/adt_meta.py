@@ -7,10 +7,12 @@ from types import MappingProxyType
 from collections.abc import Mapping, MutableMapping
 from collections import OrderedDict
 from .util import TypedProperty
-from .util import OrderedFrozenDict
+from .util import OrderedFrozenDict, FrozenDict
 from .util import _issubclass
 
-__all__ = ['BoundMeta', 'TupleMeta', 'ProductMeta', 'SumMeta', 'EnumMeta']
+__all__ = [
+    'BoundMeta', 'TupleMeta', 'ProductMeta',
+    'SumMeta', 'TaggedUnionMeta', 'EnumMeta']
 
 
 def _is_dunder(name):
@@ -46,6 +48,7 @@ RESERVED_NAMES = frozenset({
 
 RESERVED_SUNDERS = frozenset({
     '_value_',
+    '_tag_',
     '_cached_',
     '_fields_',
     '_field_table_',
@@ -54,8 +57,113 @@ RESERVED_SUNDERS = frozenset({
 
 RESERVED_ATTRS = frozenset(RESERVED_NAMES | RESERVED_SUNDERS)
 
+
 # Can't have abstract metaclass https://bugs.python.org/issue36881
-class BoundMeta(type): #, metaclass=ABCMeta):
+class GetitemSyntax: #(metaclass=ABCMeta):
+    # Should probaly do more than it currently does but it gets the job done
+    ORDERED = False
+
+    def __getitem__(cls, idx):
+        if not isinstance(idx, tp.Iterable):
+            idx = idx,
+
+        if type(cls).ORDERED:
+            idx = tuple(idx)
+        else:
+            idx = frozenset(idx)
+
+        return cls._from_idx(idx)
+
+    @abstractmethod
+    def _from_idx(cls, idx):
+        pass
+
+class AttrSyntax(type): #, metaclass=ABCMeta):
+    # Tells AttrSyntax which attrs are fields
+    FIELDS_T = type
+    ORDERED =  False
+
+    def __new__(mcs, name, bases, namespace, cache=False, **kwargs):
+        fields = {}
+        ns = {}
+
+        for k, v in namespace.items():
+            if k in RESERVED_SUNDERS:
+                raise ReservedNameError(f'class attribute {k} is reserved by the type machinery')
+            elif _is_dunder(k) or _is_sunder(k) or _is_descriptor(v):
+                ns[k] = v
+            elif k in RESERVED_NAMES:
+                raise ReservedNameError(f'Field name {k} is resevsed by the type machinery')
+            elif isinstance(v, mcs.FIELDS_T):
+                fields[k] = v
+            else:
+                ns[k] = v
+
+        return mcs._cache_handler(cache, fields, name, bases, ns, **kwargs)
+
+    @classmethod
+    def _cache_handler(mcs, cache, fields, name, bases, ns, **kwargs):
+        if fields:
+            if cache:
+                ns_idx = set()
+                for k,v in ns.items():
+                    if not _is_dunder(k):
+                        ns_idx.add((k,v))
+
+                if mcs.ORDERED:
+                    fields_idx = tuple(map(tuple, fields.items()))
+                else:
+                    fields_idx = frozenset(map(tuple, fields.items()))
+
+                cache_idx = (fields_idx,
+                        bases,
+                        name,
+                        frozenset(ns_idx),
+                        frozenset(kwargs.items()),)
+
+                try:
+                    return mcs._class_cache[cache_idx]
+                except KeyError:
+                    pass
+            t = mcs._from_fields(fields, name, bases, ns, **kwargs)
+            t._cached_ = cache
+            if cache:
+                mcs._class_cache[cache_idx] = t
+            return t
+        else:
+            return super().__new__(mcs, name, bases, ns, **kwargs)
+
+    def from_fields(cls,
+            name: str,
+            fields: tp.Mapping[str, type],
+            cache: tp.Optional[bool] = None):
+
+        if cls.is_bound:
+            raise TypeError('Type must not be bound')
+
+        for field in fields:
+            if field in RESERVED_ATTRS:
+                raise ReservedNameError(f'Field name {field} is reserved by the type machinery')
+
+        ns = {}
+
+        if cache is None:
+            cache = True
+
+        ns['__module__'] = cls.__module__
+        ns['__qualname__'] = name
+
+        return cls._cache_handler(cache, fields, name, (cls,), ns)
+
+    @classmethod
+    @abstractmethod
+    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
+        pass
+
+class BoundMeta(GetitemSyntax, type): #, metaclass=ABCMeta):
+    # for legacy reasons
+    ORDERED = True
+
     # (UnboundType, (types...)) : BoundType
     _class_cache = weakref.WeakValueDictionary()
 
@@ -93,14 +201,6 @@ class BoundMeta(type): #, metaclass=ABCMeta):
                 else:
                     unbound_bases.append(base)
 
-        if bound_types is not None:
-            if '_fields_cb' in namespace:
-                bound_types  = namespace['_fields_cb'](bound_types)
-            else:
-                for t in bases:
-                    if hasattr(t, '_fields_cb'):
-                        bound_types = t._fields_cb(bound_types)
-
         t = super().__new__(mcs, name, bases, namespace, **kwargs)
         t._fields_ = bound_types
         t._unbound_base_ = None
@@ -117,25 +217,15 @@ class BoundMeta(type): #, metaclass=ABCMeta):
 
         return t
 
-    def _fields_cb(cls, idx):
-        '''
-        Gives subclasses a chance to transform their fields. Before being bound.
-        Major usecase being Sum is bound to frozenset of fields instead of a tuple
-        '''
-        return tuple(idx)
-
     def _name_cb(cls, idx):
         '''
         Gives subclasses a chance define their name based on their idx.
         '''
         return '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
 
-    def __getitem__(cls, idx) -> 'BoundMeta':
+    def _from_idx(cls, idx) -> 'BoundMeta':
+        # Some of this should probably be in GetitemSyntax
         mcs = type(cls)
-        if not isinstance(idx, tp.Iterable):
-            idx = idx,
-
-        idx = cls._fields_cb(idx)
 
         try:
             return mcs._class_cache[cls, idx]
@@ -195,6 +285,8 @@ class BoundMeta(type): #, metaclass=ABCMeta):
         return getattr(cls, '_cached_', False)
 
 class TupleMeta(BoundMeta):
+    ORDERED = True
+
     def __getitem__(cls, idx):
         if cls.is_bound:
             return cls.fields[idx]
@@ -217,61 +309,16 @@ class TupleMeta(BoundMeta):
         return MappingProxyType({idx : field for idx, field in enumerate(cls.fields)})
 
 
-class ProductMeta(TupleMeta):
-    def __new__(mcs, name, bases, namespace, cache=False, **kwargs):
-        fields = {}
-        ns = {}
-
-        for k, v in namespace.items():
-            if k in RESERVED_SUNDERS:
-                raise ReservedNameError(f'class attribute {k} is reserved by the type machinery')
-            elif _is_dunder(k) or _is_sunder(k) or _is_descriptor(v):
-                ns[k] = v
-            elif k in RESERVED_NAMES:
-                raise ReservedNameError(f'Field name {k} is resevsed by the type machinery')
-            elif isinstance(v, type):
-                if k in fields:
-                    raise TypeError(f'Conflicting definitions of field {k}')
-                else:
-                    fields[k] = v
-            else:
-                ns[k] = v
-
-        if fields:
-            return mcs._from_fields(fields, name, bases, ns, cache, **kwargs)
-        else:
-            return super().__new__(mcs, name, bases, ns, **kwargs)
-
-    def __init__(cls, name, bases, namespace, cache=False, **kwargs):
-        return super().__init__(name, bases, namespace, **kwargs)
+class ProductMeta(AttrSyntax, TupleMeta):
+    FIELDS_T = type
+    ORDERED = True
 
     @classmethod
-    def _from_fields(mcs, fields, name, bases, ns, cache, **kwargs):
-        if cache:
-            ns_idx = set()
-            for k,v in ns.items():
-                if not _is_dunder(k):
-                    ns_idx.add((k,v))
-
-            fields_idx = tuple(map(tuple, fields.items()))
-            cache_idx = (fields_idx,
-                    bases,
-                    name,
-                    frozenset(ns_idx),
-                    frozenset(kwargs.items()),)
-
-            try:
-                return mcs._class_cache[cache_idx]
-            except KeyError:
-                pass
-
-        # not strictly necessary could iterative over class dict finding
-        # TypedProperty to reconstruct _field_table_ but that seems bad
-        field_table = dict()
+    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
 
         def _get_tuple_base(bases):
             for base in bases:
-                if not isinstance(base, ProductMeta) and isinstance(base, TupleMeta):
+                if not isinstance(base, mcs) and isinstance(base, TupleMeta):
                     return base
                 r_base =_get_tuple_base(base.__bases__)
                 if r_base is not None:
@@ -300,17 +347,17 @@ class ProductMeta(TupleMeta):
         for field_name, field_type in fields.items():
             assert field_name not in ns
             idx = idx_table[field_name]
-            field_table[field_name] = field_type
             ns[field_name] = _make_prop(field_type, idx)
-
 
         # this is all really gross but I don't know how to do this cleanly
         # need to build t so I can call super() in new and init
         # need to exec to get proper signatures
         t = super().__new__(mcs, name, bases, ns, **kwargs)
-        t._field_table_ = OrderedFrozenDict(field_table)
-        t._cahced_ = cache
-        gs = {name : t, 'ProductMeta' : ProductMeta}
+
+        # not strictly necessary could iterative over class dict finding
+        # TypedProperty to reconstruct _field_table_ but that seems bad
+        t._field_table_ = OrderedFrozenDict(fields)
+        gs = {name : t}
         ls = {}
 
         arg_list = ','.join(fields.keys())
@@ -332,11 +379,7 @@ def __init__(self, {type_sig}):
         exec(__init__, gs, ls)
         t.__init__ = ls['__init__']
 
-        if cache:
-            mcs._class_cache[cache_idx] = t
-
         return t
-
 
     def __getitem__(cls, idx):
         if cls.is_bound:
@@ -350,30 +393,6 @@ def __init__(self, {type_sig}):
     @property
     def field_dict(cls):
         return MappingProxyType(cls._field_table_)
-
-    def from_fields(cls,
-            name: str,
-            fields: tp.Mapping[str, type],
-            cache: tp.Optional[bool] = None):
-
-        if cls.is_bound:
-            raise TypeError('Type must not be bound')
-
-        for field in fields:
-            if field in RESERVED_ATTRS:
-                raise ReservedNameError(f'Field name {field} is reserved by the type machinery')
-
-        ns = {}
-
-        if cache is None:
-            cache = True
-
-
-        ns['__module__'] = cls.__module__
-        ns['__qualname__'] = name
-
-        return cls._from_fields(fields, name, (cls,), ns, cache)
-
 
     def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         new_fields = OrderedDict()
@@ -390,7 +409,10 @@ def __init__(self, {type_sig}):
         else:
             return cls
 
+
 class SumMeta(BoundMeta):
+    ORDERED = False
+
     def __getitem__(cls, T):
         if cls.is_bound:
             if T in cls:
@@ -402,9 +424,6 @@ class SumMeta(BoundMeta):
 
     def __contains__(cls, T):
         return T in cls.fields
-
-    def _fields_cb(cls, idx):
-        return frozenset(idx)
 
     def enumerate(cls):
         for field in cls.fields:
@@ -418,34 +437,87 @@ class SumMeta(BoundMeta):
         return MappingProxyType({field.__name__ : field for field in cls.fields})
 
 
-class EnumMeta(BoundMeta):
+class TaggedUnionMeta(AttrSyntax, SumMeta):
+    FIELDS_T = type
+    ORDERED = False
+
+    @classmethod
+    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
+        def _get_sum_base(bases):
+            for base in bases:
+                if not isinstance(base, mcs) and isinstance(base, SumMeta):
+                    return base
+                r_base =_get_sum_base(base.__bases__)
+                if r_base is not None:
+                    return r_base
+            return None
+
+        sum_base = _get_sum_base(bases)[tuple(fields.values())]
+        bases = *bases, sum_base
+
+        def _make_prop(field_type, tag):
+            @TypedProperty(field_type)
+            def prop(self):
+                cls = type(self)
+                return cls.Match(self._tag_ == tag, self._value_)
+
+            @prop.setter
+            def prop(self, value):
+                self._value_ = value
+                self._tag_ = tag
+
+            return prop
+
+        # add properties to namespace
+        for tag, (field_name, field_type) in enumerate(fields.items()):
+            assert field_name not in ns
+            ns[field_name] = _make_prop(field_type, tag)
+
+        t = super().__new__(mcs, name, bases, ns, **kwargs)
+        t._field_table_ = FrozenDict(fields)
+        return t
+
+    def __getitem__(cls, idx):
+        if cls.is_bound:
+            return super().__getitem__(idx)
+        else:
+            raise TypeError("Cannot bind TaggedUnion types with getitem")
+
+    @property
+    def field_dict(cls):
+        return MappingProxyType(cls._field_table_)
+
+    def enumerate(cls):
+        for tag, field in cls.field_dict.items():
+            if isinstance(field, BoundMeta):
+                yield from map(lambda v: cls(**{tag: v}), field.enumerate())
+            else:
+                yield cls(**{tag: field()})
+
+
+class EnumMeta(AttrSyntax, BoundMeta):
     class Auto:
         def __repr__(self):
             return 'Auto()'
 
-    def __new__(mcs, cls_name, bases, namespace, **kwargs):
-        elems = {}
-        ns = {}
 
-        for k, v in namespace.items():
-            if k in RESERVED_SUNDERS:
-                raise ReservedNameError(f'class attribute {k} is reserved by the type machinery')
-            elif _is_dunder(k) or _is_sunder(k) or _is_descriptor(v):
-                ns[k] = v
-            elif k in RESERVED_NAMES:
-                raise ReservedNameError(f'Field name {k} is resevsed by the type machinery')
-            elif isinstance(v,  (int, mcs.Auto)):
-                elems[k] = v
-            else:
-                raise TypeError(f'Enum value should be int not {type(v)}')
+    FIELDS_T = int, Auto
+    ORDERED = False
 
-        t = super().__new__(mcs, cls_name, bases, ns, **kwargs)
+    @classmethod
+    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
+        enum_base = None
+        for base in bases:
+            if isinstance(base, mcs):
+                if enum_base is None:
+                    enum_base = base
+                else:
+                    raise TypeError('Can only inherit from one enum type')
+
+        t = super().__new__(mcs, name, bases, ns, **kwargs)
+
         name_table = dict()
-
-        if not elems:
-            return t
-
-        for name, value in elems.items():
+        for name, value in fields.items():
             elem = t.__new__(t)
             t.__init__(elem, value)
             setattr(elem, '_name_', name)
@@ -454,14 +526,6 @@ class EnumMeta(BoundMeta):
 
         t._fields_ = tuple(name_table.values())
         t._field_table_ = name_table
-
-        enum_base = None
-        for base in bases:
-            if isinstance(base, mcs):
-                if enum_base is None:
-                    enum_base = base
-                else:
-                    raise TypeError('Can only inherit from one enum type')
 
         if enum_base is not None:
             t._unbound_base_ = enum_base

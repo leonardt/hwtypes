@@ -1,4 +1,4 @@
-from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta, is_adt_type
+from .adt_meta import TupleMeta, ProductMeta, SumMeta, TaggedUnionMeta, EnumMeta, is_adt_type
 from collections import OrderedDict
 from types import MappingProxyType
 import typing as tp
@@ -146,6 +146,47 @@ class Sum(metaclass=SumMeta):
     def value(self):
         warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
         return self._value_
+
+class TaggedUnion(Sum, metaclass=TaggedUnionMeta):
+    def __init__(self, **kwargs):
+        if len(kwargs) == 0:
+            raise ValueError('Must specify a value')
+        elif len(kwargs) != 1:
+            raise ValueError('Expected one value')
+
+        cls = type(self)
+        field, value = next(iter(kwargs.items()))
+        if field not in cls.field_dict:
+            raise ValueError(f'Invalid field {field}')
+
+        setattr(self, field, value)
+
+    def __setitem__(self, T, value):
+        raise TypeError(f'setitem syntax is not supported on {type(self)}')
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self._tag_ == other._tag_ and self._value_ == other._value_
+        else:
+            return NotImplemented
+
+    def __hash__(self):
+        return hash(self._tag_) + hash(self._value_)
+
+    def __repr__(self):
+        return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict.items())})'
+
+    @property
+    def value_dict(self):
+        d = dict()
+        for k in type(self).field_dict:
+            m = getattr(self, k)
+            if m.match:
+                d[k] = m.value
+            else:
+                d[k] = None
+        return MappingProxyType(d)
+
 
 class Enum(metaclass=EnumMeta):
     def __init__(self, value):
