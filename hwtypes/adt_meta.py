@@ -10,7 +10,9 @@ from .util import TypedProperty
 from .util import OrderedFrozenDict, FrozenDict
 from .util import _issubclass
 
-__all__ = ['BoundMeta', 'TupleMeta', 'ProductMeta', 'SumMeta', 'EnumMeta']
+__all__ = [
+    'BoundMeta', 'TupleMeta', 'ProductMeta',
+    'SumMeta', 'TaggedUnionMeta', 'EnumMeta']
 
 
 def _is_dunder(name):
@@ -46,6 +48,7 @@ RESERVED_NAMES = frozenset({
 
 RESERVED_SUNDERS = frozenset({
     '_value_',
+    '_tag_',
     '_cached_',
     '_fields_',
     '_field_table_',
@@ -432,6 +435,64 @@ class SumMeta(BoundMeta):
     @property
     def field_dict(cls):
         return MappingProxyType({field.__name__ : field for field in cls.fields})
+
+
+class TaggedUnionMeta(AttrSyntax, SumMeta):
+    FIELDS_T = type
+    ORDERED = False
+
+    @classmethod
+    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
+        def _get_sum_base(bases):
+            for base in bases:
+                if not isinstance(base, mcs) and isinstance(base, SumMeta):
+                    return base
+                r_base =_get_sum_base(base.__bases__)
+                if r_base is not None:
+                    return r_base
+            return None
+
+        sum_base = _get_sum_base(bases)[tuple(fields.values())]
+        bases = *bases, sum_base
+
+        def _make_prop(field_type, tag):
+            @TypedProperty(field_type)
+            def prop(self):
+                cls = type(self)
+                return cls.Match(self._tag_ == tag, self._value_)
+
+            @prop.setter
+            def prop(self, value):
+                self._value_ = value
+                self._tag_ = tag
+
+            return prop
+
+        # add properties to namespace
+        for tag, (field_name, field_type) in enumerate(fields.items()):
+            assert field_name not in ns
+            ns[field_name] = _make_prop(field_type, tag)
+
+        t = super().__new__(mcs, name, bases, ns, **kwargs)
+        t._field_table_ = FrozenDict(fields)
+        return t
+
+    def __getitem__(cls, idx):
+        if cls.is_bound:
+            return super().__getitem__(idx)
+        else:
+            raise TypeError("Cannot bind TaggedUnion types with getitem")
+
+    @property
+    def field_dict(cls):
+        return MappingProxyType(cls._field_table_)
+
+    def enumerate(cls):
+        for tag, field in cls.field_dict.items():
+            if isinstance(field, BoundMeta):
+                yield from map(lambda v: cls(**{tag: v}), field.enumerate())
+            else:
+                yield cls(**{tag: field()})
 
 
 class EnumMeta(AttrSyntax, BoundMeta):
