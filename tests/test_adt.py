@@ -41,7 +41,7 @@ def test_enum():
             En1.b,
     }
 
-    assert En1.a.value == 0
+    assert En1.a._value_ == 0
     assert En1.a is En1.a
 
     assert issubclass(En1, Enum)
@@ -61,11 +61,13 @@ def test_tuple():
             Tu(En1.b, En2.d),
     }
 
-    assert Tu(En1.a, En2.c).value == (En1.a, En2.c)
+    assert Tu(En1.a, En2.c)._value_ == (En1.a, En2.c)
 
     assert issubclass(Tu, Tuple)
     assert isinstance(Tu(En1.a, En2.c), Tuple)
     assert isinstance(Tu(En1.a, En2.c), Tu)
+    assert Tu[0] == En1
+    assert Tu[1] == En2
 
     t = Tu(En1.a, En2.c)
     assert (t[0],t[1]) == (En1.a,En2.c)
@@ -90,7 +92,7 @@ def test_product():
             Pr(En1.b, En2.d),
     }
 
-    assert Pr(En1.a, En2.c).value == (En1.a, En2.c)
+    assert Pr(En1.a, En2.c)._value_ == (En1.a, En2.c)
 
     assert issubclass(Pr, Product)
     assert isinstance(Pr(En1.a, En2.c), Product)
@@ -162,14 +164,20 @@ def test_sum():
             Su(Pr(En1.b, En2.d)),
     }
 
-    assert Su(En1.a).value == En1.a
+    assert Su(En1.a)._value_ == En1.a
+
+    assert En1 in Su
+    assert Pr in Su
+    assert En2 not in Su
 
     assert issubclass(Su, Sum)
     assert isinstance(Su(En1.a), Su)
     assert isinstance(Su(En1.a), Sum)
 
-    assert Su.En1 == En1
-    assert Su.Pr == Pr
+    assert Su[En1] == En1
+    assert Su[Pr] == Pr
+    with pytest.raises(KeyError):
+        Su[En2]
 
     assert Su.field_dict == {'En1' : En1, 'Pr' : Pr}
 
@@ -177,23 +185,35 @@ def test_sum():
         Su(1)
 
     s = Su(En1.a)
-    assert s.value == En1.a
-    assert s.En1 == s.value
-    assert s.Pr is None
+    assert s[En1].match
+    assert not s[Pr].match
+    with pytest.raises(TypeError):
+        s[En2].match
+
+    assert s[En1].value == En1.a
+
+    with pytest.raises(TypeError):
+        s[Pr].value
+
+
     assert s.value_dict == {'En1' : En1.a, 'Pr' : None}
 
-    s.value = En1.b
-    assert s.value == En1.b
-    s.Pr = Pr(En1.a, En2.c)
-    assert s.value == Pr(En1.a, En2.c)
-    assert s.En1 is None
-    assert s.Pr == s.value
+    s[En1] = En1.b
+    assert s[En1].value == En1.b
+
+    s[Pr] = Pr(En1.a, En2.c)
+    assert s[Pr].match
+    assert not s[En1].match
+    assert s[Pr].value == Pr(En1.a, En2.c)
 
     with pytest.raises(TypeError):
-        s.En1 = En2.c
+        s[En1].value
 
     with pytest.raises(TypeError):
-        s.Pr = En1.a
+        s[En1] = En2.c
+
+    with pytest.raises(TypeError):
+        s[Pr] = En1.a
 
 def test_new():
     t = new(Tuple)
@@ -248,3 +268,9 @@ def test_unbound_t(t, base):
     with pytest.raises(AttributeError):
         sub_t.unbound_t
 
+@pytest.mark.parametrize("val", [
+    En1.a, Su(En1.a),
+    Tu(En1.a, En2.c), Pr(En1.a, En2.c)])
+def test_deprecated(val):
+    with pytest.warns(DeprecationWarning):
+        val.value

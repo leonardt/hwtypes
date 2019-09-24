@@ -2,6 +2,7 @@ from .adt_meta import TupleMeta, ProductMeta, SumMeta, EnumMeta, is_adt_type
 from collections import OrderedDict
 from types import MappingProxyType
 import typing as tp
+import warnings
 
 __all__  = ['Tuple', 'Product', 'Sum', 'Enum']
 __all__ += ['new_instruction', 'is_adt_type']
@@ -25,11 +26,11 @@ class Tuple(metaclass=TupleMeta):
             if not isinstance(v,t):
                 raise TypeError('Value {} is not of type {}'.format(repr(v), repr(t)))
 
-        self._value = value
+        self._value_ = value
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
-            return self.value == other.value
+            return self._value_ == other._value_
         else:
             return NotImplemented
 
@@ -37,25 +38,21 @@ class Tuple(metaclass=TupleMeta):
         return not (self == other)
 
     def __hash__(self):
-        return hash(self.value)
+        return hash(self._value_)
 
     def __getitem__(self, idx):
-        return self.value[idx]
+        return self._value_[idx]
 
     def __setitem__(self, idx, value):
         if isinstance(value, type(self)[idx]):
-            v = list(self.value)
+            v = list(self._value_)
             v[idx] = value
-            self._value = v
+            self._value_ = v
         else:
             raise TypeError(f'Value {value} is not of type {type(self)[idx]}')
 
-    @property
-    def value(self):
-        return self._value
-
     def __repr__(self):
-        return f'{type(self).__name__}({", ".join(map(repr, self.value))})'
+        return f'{type(self).__name__}({", ".join(map(repr, self._value_))})'
 
     @property
     def value_dict(self):
@@ -64,6 +61,10 @@ class Tuple(metaclass=TupleMeta):
             d[k] = self[k]
         return MappingProxyType(d)
 
+    @property
+    def value(self):
+        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
+        return self._value_
 
 class Product(Tuple, metaclass=ProductMeta):
     def __repr__(self):
@@ -77,51 +78,78 @@ class Product(Tuple, metaclass=ProductMeta):
         return MappingProxyType(d)
 
 class Sum(metaclass=SumMeta):
+    class Match:
+        __slots__ = ('_match', '_value', '_safe')
+        def __init__(self, match, value, *, safe: bool = True):
+            self._match = match
+            self._value = value
+            self._safe = safe
+
+        @property
+        def match(self):
+            return self._match
+
+        @property
+        def value(self):
+            if not self._safe or self.match:
+                return self._value
+            else:
+                raise TypeError(f'No value for unmatched type')
+
     def __init__(self, value):
-        self.value = value
+        if type(value) not in type(self):
+            raise TypeError(f'Value {value} is not of types {type(self).fields}')
+        self._value_ = value
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and self.value == other.value
+        if isinstance(other, type(self)):
+            return self._value_ == other._value_
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not (self == other)
 
     def __hash__(self):
-        return hash(self.value)
+        return hash(self._value_)
 
-    @property
-    def value(self):
-        return self._value
+    def __getitem__(self, T) -> 'Sum.Match':
+        cls = type(self)
+        if T in cls:
+            return cls.Match(isinstance(self._value_, T), self._value_)
+        else:
+            raise TypeError(f'{T} not in {cls}')
 
-    @value.setter
-    def value(self, value):
-        if not isinstance(value, tuple(type(self).fields)):
-            raise TypeError(f'Value {value} is not of types {type(self).fields}')
-        self._value = value
 
-    def match(self):
-        return type(self.value), self.value
+    def __setitem__(self, T, value):
+        if T not in type(self):
+            raise TypeError(f'indices must be in {type(self).fields} not {T}')
+        elif not isinstance(value, T):
+            raise TypeError(f'expected {T} not {type(value)}')
+        else:
+            self._value_ = value
 
     def __repr__(self) -> str:
-        return f'{type(self)}({self.value})'
+        return f'{type(self)}({self._value_})'
 
     @property
     def value_dict(self):
         d = {}
         for k,t in type(self).field_dict.items():
-            if isinstance(self.value, t):
-                d[k] = self.value
+            if self[t].match:
+                d[k] = self._value_
             else:
                 d[k] = None
         return MappingProxyType(d)
 
+    @property
+    def value(self):
+        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
+        return self._value_
+
 class Enum(metaclass=EnumMeta):
     def __init__(self, value):
         self._value_ = value
-
-    @property
-    def value(self):
-        return self._value_
 
     @property
     def name(self):
@@ -131,13 +159,16 @@ class Enum(metaclass=EnumMeta):
         return f'{type(self).__name__}.{self.name}'
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and self.value == other.value
+        if isinstance(other, type(self)):
+            return self._value_ == other._value_
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not (self == other)
 
     def __hash__(self):
-        return hash(self.value)
+        return hash(self._value_)
 
     def __getattribute__(self, attr):
         # prevent:
@@ -149,6 +180,11 @@ class Enum(metaclass=EnumMeta):
             raise AttributeError('Cannot access enum members from enum instances')
         else:
             return super().__getattribute__(attr)
+
+    @property
+    def value(self):
+        warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 3)
+        return self._value_
 
 def new_instruction():
     return EnumMeta.Auto()

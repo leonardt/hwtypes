@@ -41,11 +41,11 @@ RESERVED_NAMES = frozenset({
     'field_dict',
     'is_bound',
     'is_cached',
-    'value',
     'value_dict',
 })
 
 RESERVED_SUNDERS = frozenset({
+    '_value_',
     '_cached_',
     '_fields_',
     '_field_table_',
@@ -179,12 +179,12 @@ class BoundMeta(type): #, metaclass=ABCMeta):
     def __repr__(cls):
         return f"{cls.__name__}"
 
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         new_fields = []
         for T in cls.fields:
             if T == A or (rebind_sub_types and _issubclass(T,A)):
                 new_fields.append(B)
-            elif isinstance(T, BoundMeta):
+            elif rebind_recursive and isinstance(T, BoundMeta):
                 new_fields.append(T.rebind(A, B, rebind_sub_types))
             else:
                 new_fields.append(T)
@@ -340,7 +340,10 @@ def __init__(self, {type_sig}):
 
     def __getitem__(cls, idx):
         if cls.is_bound:
-            return cls.fields[idx]
+            if isinstance(idx, str):
+                return cls.field_dict[idx]
+            else:
+                return super().__getitem__(idx)
         else:
             raise TypeError("Cannot bind product types with getitem")
 
@@ -372,12 +375,12 @@ def __init__(self, {type_sig}):
         return cls._from_fields(fields, name, (cls,), ns, cache)
 
 
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         new_fields = OrderedDict()
         for field, T in cls.field_dict.items():
             if T == A or (rebind_sub_types and _issubclass(T,A)):
                 new_fields[field] = B
-            elif isinstance(T, BoundMeta):
+            elif rebind_recursive and isinstance(T, BoundMeta):
                 new_fields[field] = T.rebind(A, B, rebind_sub_types)
             else:
                 new_fields[field] = T
@@ -388,28 +391,17 @@ def __init__(self, {type_sig}):
             return cls
 
 class SumMeta(BoundMeta):
-    def __new__(mcs, name, bases, namespace, fields=None, **kwargs):
-        def _make_prop(field_type):
-            @TypedProperty(field_type)
-            def prop(self):
-                return self.value_dict[field_type.__name__]
+    def __getitem__(cls, T):
+        if cls.is_bound:
+            if T in cls:
+                return T
+            else:
+                raise KeyError(f'{T} not in {cls}')
+        else:
+            return super().__getitem__(T)
 
-            @prop.setter
-            def prop(self, value):
-                self.value = value
-
-            return prop
-
-        if fields is not None:
-            for field in fields:
-                fname = field.__name__
-                if fname in RESERVED_ATTRS:
-                    raise ReservedNameError(f'Field name {fname} is reserved by the type machinery')
-                elif fname in namespace:
-                    raise TypeError(f'Field name {fname} cannot be used as a class attribute')
-                namespace[fname] = _make_prop(field)
-
-        return super().__new__(mcs, name, bases, namespace, fields, **kwargs)
+    def __contains__(cls, T):
+        return T in cls.fields
 
     def _fields_cb(cls, idx):
         return frozenset(idx)
@@ -488,7 +480,7 @@ class EnumMeta(BoundMeta):
     def enumerate(cls):
         yield from cls.fields
 
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False):
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         # Enums aren't bound to types
         # could potentialy rebind values but that seems annoying
         return cls

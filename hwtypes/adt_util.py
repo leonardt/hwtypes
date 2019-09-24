@@ -19,10 +19,14 @@ def rebind_bitvector(
         else:
             return bv_type_1
     elif isinstance(adt, BoundMeta):
-        new_adt = adt
+        _to_new = []
         for field in adt.fields:
             new_field = rebind_bitvector(field, bv_type_0, bv_type_1,keep_modifiers)
-            new_adt = new_adt.rebind(field, new_field)
+            _to_new.append((field,new_field))
+        new_adt = adt
+
+        for field,new_field in _to_new:
+            new_adt = new_adt.rebind(field, new_field, rebind_recursive=False)
         return new_adt
     else:
         return adt
