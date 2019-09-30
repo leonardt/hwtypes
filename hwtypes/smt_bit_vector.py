@@ -166,6 +166,14 @@ class SMTBit(AbstractBit):
 
         return T(smt.Ite(self.value, t_branch.value, f_branch.value))
 
+    def substitute(self, *subs : tp.List[tp.Tuple['SMTBit', 'SMTBit']]):
+        return SMTBit(
+            self.value.substitute(
+                {from_.value:to.value for from_, to in subs}
+            )
+        )
+
+
 def _coerce(T : tp.Type['SMTBitVector'], val : tp.Any) -> 'SMTBitVector':
     if not isinstance(val, SMTBitVector):
         return T(val)
@@ -633,6 +641,14 @@ class SMTBitVector(AbstractBitVector):
             raise ValueError()
         return type(self).unsized_t[self.size + ext](smt.BVZExt(self.value, ext))
 
+    def substitute(self, *subs : tp.List[tp.Tuple["SBV", "SBV"]]):
+        return SMTBitVector[self.size](
+            self.value.substitute(
+                {from_.value:to.value for from_, to in subs}
+            )
+        )
+
+
 #    def bits(self):
 #        return [(self >> i) & 1 for i in range(self.size)]
 #
@@ -712,6 +728,8 @@ class SMTSIntVector(SMTNumVector):
             raise e from None
         except TypeError:
             return NotImplemented
+
+
 
 
 _Family_ = TypeFamily(SMTBit, SMTBitVector, SMTUIntVector, SMTSIntVector)
