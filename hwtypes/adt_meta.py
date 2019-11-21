@@ -223,6 +223,18 @@ class BoundMeta(GetitemSyntax, type): #, metaclass=ABCMeta):
         '''
         return '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
 
+    def _fields_cb(cls, idx):
+        '''
+        Gives subclasses a chance define their fields based on their idx.
+        '''
+        return idx
+
+    def _index_cb(cls, idx):
+        '''
+        Gives subclasses a chance to modify their base idx.
+        '''
+        return idx
+
     def _from_idx(cls, idx) -> 'BoundMeta':
         # Some of this should probably be in GetitemSyntax
         mcs = type(cls)
@@ -236,11 +248,13 @@ class BoundMeta(GetitemSyntax, type): #, metaclass=ABCMeta):
             raise TypeError('Type is already bound')
 
         bases = [cls]
-        bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, BoundMeta))
+        base_idx = cls._index_cb(idx)
+        bases.extend(b[base_idx] for b in cls.__bases__ if isinstance(b, BoundMeta))
         bases = tuple(bases)
         class_name = cls._name_cb(idx)
+        fields = cls._fields_cb(idx)
 
-        t = mcs(class_name, bases, {'__module__' : cls.__module__}, fields=idx)
+        t = mcs(class_name, bases, {'__module__' : cls.__module__}, fields=fields)
         mcs._class_cache[cls, idx] = t
         t._cached_ = True
         return t
