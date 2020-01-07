@@ -1,8 +1,10 @@
 from .adt_meta import BoundMeta
-from .bit_vector_abc import AbstractBitVectorMeta, AbstractBitVector
+from .bit_vector_abc import AbstractBitVectorMeta, AbstractBitVector, AbstractBit
 
 from .util import _issubclass
 from hwtypes.modifiers import unwrap_modifier, wrap_modifier, is_modified
+from .adt import Product, Sum, Tuple
+from inspect import isclass
 
 def rebind_bitvector(
         adt,
@@ -46,3 +48,24 @@ def rebind_keep_modifiers(adt, A, B):
         return new_adt
     else:
         return adt
+
+#rebind_type will rebind a type to a different family
+#Types that will be rebinded:
+#   Product,Tuple,Sum, BitVector, Bit
+#   Modified types
+#If the passed in type cannot be rebinded, it will just be returned unmodified
+def rebind_type(T, family):
+    def _rebind_bv(T):
+        return rebind_bitvector(T, AbstractBitVector, family.BitVector).rebind(AbstractBit, family.Bit, True)
+    if not isclass(T):
+        return T
+    elif is_modified(T):
+        return get_modifier(T)(rebind_type(get_unmodified(T), family, dont_rebind, do_rebind, is_magma))
+    elif issubclass(T, AbstractBitVector):
+        return rebind_bitvector(T, AbstractBitVector, family.BitVector)
+    elif issubclass(T, AbstractBit):
+        return family.Bit
+    elif issubclass(T, (Product, Tuple, Sum)):
+        return _rebind_bv(T)
+    else:
+        return T
