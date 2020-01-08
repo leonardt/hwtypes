@@ -138,7 +138,12 @@ class SMTBit(AbstractBit):
         tb_t = type(t_branch)
         fb_t = type(f_branch)
         BV_t = self.get_family().BitVector
-        if isinstance(t_branch, cls) and isinstance(f_branch, cls):
+        t_bv_or_bit = isinstance(t_branch, BV_t) or isinstance(t_branch, cls)
+        f_bv_or_bit = isinstance(f_branch, BV_t) or isinstance(f_branch, cls)
+        if t_bv_or_bit and f_bv_or_bit and (tb_t is not fb_t):
+            raise TypeError(f'Both branches must have the same type. {tb_t} is not {fb_t}')
+
+        elif isinstance(t_branch, cls) and isinstance(f_branch, cls):
             T = tb_t
         elif isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
             if tb_t.size != fb_t.size:

@@ -1,6 +1,6 @@
 import pytest
 import operator
-from hwtypes import SMTBit, z3Bit
+from hwtypes import SMTBit, SMTBitVector, z3Bit
 
 @pytest.mark.parametrize("op", [
     operator.and_,
@@ -29,4 +29,10 @@ def test_substitute():
     expr1 = expr0.substitute((a0, a1), (b0, b1))
     assert expr1.value is (a1|b1).value
 
+def test_ite():
+    p = SMTBit()
+    t = SMTBit()
+    f = SMTBitVector[1]()
+    with pytest.raises(TypeError):
+        res = p.ite(t, f)
 
