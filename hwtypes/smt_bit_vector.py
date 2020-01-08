@@ -134,6 +134,29 @@ class SMTBit(AbstractBit):
         return type(self)(smt.Xor(self.value, other.value))
 
     def ite(self, t_branch, f_branch):
+        '''
+        typing works as follows:
+        given cls is type(self)
+        and BV is cls.get_family().BitVector
+
+        if both branches are subclasses of cls
+        and one is a subclass of the other
+        return type is the parent type
+
+        if both branches are subclasses of BV
+        and one is a subclass of the other
+        return type is the parent type
+
+        if one branch is a subclass of cls
+        try to cast the other branch to that type
+        and return that type
+
+        if one branch is a subclass of BV
+        try to cast the other branch to that type
+        and return that type
+
+        all other cases are errors
+        '''
         cls = type(self)
         tb_t = type(t_branch)
         fb_t = type(f_branch)
