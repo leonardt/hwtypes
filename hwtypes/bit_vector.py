@@ -108,7 +108,7 @@ class Bit(AbstractBit):
         elif isinstance(f_branch, BV_t):
             T = fb_t
         else:
-            raise TypeError(f'Atleast one branch must be a {BV_t} or {cls}')
+            raise TypeError(f'Cannot infer return type. Atleast one branch must be a {BV_t} or {cls}')
 
         t_branch = T(t_branch)
         f_branch = T(f_branch)
