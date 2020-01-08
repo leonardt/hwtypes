@@ -99,6 +99,10 @@ class Bit(AbstractBit):
                 T = tb_t
             else:
                 raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
+        elif isinstance(t_branch, cls):
+            T = tb_t
+        elif isinstance(f_branch, cls):
+            T = fb_t
         elif isinstance(t_branch, BV_t):
             T = tb_t
         elif isinstance(f_branch, BV_t):
@@ -106,7 +110,9 @@ class Bit(AbstractBit):
         else:
             raise TypeError(f'Atleast one branch must be a {BV_t}')
 
-        return T(t_branch if self else f_branch)
+        t_branch = T(t_branch)
+        f_branch = T(f_branch)
+        return t_branch if self else f_branch
 
     def __bool__(self) -> bool:
         return self._value

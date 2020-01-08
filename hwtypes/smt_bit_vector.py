@@ -154,14 +154,20 @@ class SMTBit(AbstractBit):
                 T = tb_t
             else:
                 raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
+        elif isinstance(t_branch, cls):
+            T = tb_t
+        elif isinstance(f_branch, cls):
+            T = fb_t
         elif isinstance(t_branch, BV_t):
             T = tb_t
         elif isinstance(f_branch, BV_t):
             T = fb_t
         else:
             raise TypeError(f'Atleast one branch must be a {BV_t}')
-
-        return T(smt.Ite(self.value, T(t_branch).value, T(f_branch).value))
+        
+        t_branch = T(t_branch)
+        f_branch = T(f_branch)
+        return T(smt.Ite(self.value, t_branch.value, f_branch.value))
 
     def substitute(self, *subs : tp.List[tp.Tuple['SMTBit', 'SMTBit']]):
         return SMTBit(
