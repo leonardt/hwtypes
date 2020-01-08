@@ -1,7 +1,7 @@
 import pytest
 
 from hwtypes.adt import Product, Sum, Enum, Tuple
-from hwtypes.adt_util import rebind_bitvector, rebind_keep_modifiers
+from hwtypes.adt_util import rebind_bitvector, rebind_keep_modifiers, rebind_type
 from hwtypes.bit_vector import AbstractBitVector, BitVector, AbstractBit, Bit
 from hwtypes.smt_bit_vector import SMTBit, SMTBitVector
 from hwtypes.util import _issubclass
@@ -173,3 +173,22 @@ def test_sum_issue():
         S = Sum[T,BV[8]]
         S_smt = rebind_bitvector(S,AbstractBitVector,SMTBitVector, True)
         assert T_smt in S_smt.fields
+
+def test_rebind_type():
+    class E(Enum):
+        a=1
+        b=2
+    def gen_type(family):
+        Bit = family.Bit
+        BV = family.BitVector
+        class A(Product,cache=True):
+            a=Sum[Bit,BV[8],E]
+            b=BV[16]
+            c=Tuple[E,Bit,BV[7]]
+        return A
+    A_bv = gen_type(Bit.get_family())
+    A_smt = gen_type(SMTBit.get_family())
+    Ar_smt = rebind_type(A_bv, SMTBit.get_family())
+    Ar_bv = rebind_type(A_smt, Bit.get_family())
+    assert A_bv == Ar_bv
+    assert A_smt == Ar_smt
