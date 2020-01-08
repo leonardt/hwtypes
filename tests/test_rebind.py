@@ -181,7 +181,7 @@ def test_rebind_type():
     def gen_type(family):
         Bit = family.Bit
         BV = family.BitVector
-        class A(Product,cache=True):
+        class A(Product, cache=True):
             a=Sum[Bit,BV[8],E]
             b=BV[16]
             c=Tuple[E,Bit,BV[7]]
