@@ -139,32 +139,29 @@ class SMTBit(AbstractBit):
         fb_t = type(f_branch)
         BV_t = self.get_family().BitVector
         if isinstance(t_branch, cls) and isinstance(f_branch, cls):
-            T = tb_t
+            if issubclass(tb_t, fb_t):
+                T = fb_t
+            elif issubclass(fb_t, tb_t):
+                T = tb_t
+            else:
+                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
         elif isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
             if tb_t.size != fb_t.size:
                 raise InconsistentSizeError('Both branches must have the same size')
-            elif tb_t is not fb_t:
-                raise TypeError(f'Both branches must have the same type. {tb_t} is not {fb_t}')
-            T = tb_t
+            elif issubclass(tb_t, fb_t):
+                T = fb_t
+            elif issubclass(fb_t, tb_t):
+                T = tb_t
+            else:
+                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
         elif isinstance(t_branch, BV_t):
-            f_branch = tb_t(f_branch)
             T = tb_t
         elif isinstance(f_branch, BV_t):
-            t_branch = fb_t(t_branch)
             T = fb_t
         else:
-            t_branch = BV_t(t_branch)
-            f_branch = BV_t(f_branch)
-            ext = t_branch.size - f_branch.size
-            if ext > 0:
-                f_branch = f_branch.zext(ext)
-            elif ext < 0:
-                t_branch = t_branch.zext(-ext)
+            raise TypeError(f'Atleast one branch must be a {BV_t}')
 
-            T = type(t_branch)
-
-
-        return T(smt.Ite(self.value, t_branch.value, f_branch.value))
+        return T(smt.Ite(self.value, T(t_branch).value, T(f_branch).value))
 
     def substitute(self, *subs : tp.List[tp.Tuple['SMTBit', 'SMTBit']]):
         return SMTBit(

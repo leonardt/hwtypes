@@ -79,26 +79,34 @@ class Bit(AbstractBit):
         return type(self)(self._value ^ other._value)
 
     def ite(self, t_branch, f_branch):
+        cls = type(self)
         tb_t = type(t_branch)
         fb_t = type(f_branch)
         BV_t = self.get_family().BitVector
-        if isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
+        if isinstance(t_branch, cls) and isinstance(f_branch, cls):
+            if issubclass(tb_t, fb_t):
+                T = fb_t
+            elif issubclass(fb_t, tb_t):
+                T = tb_t
+            else:
+                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
+        elif isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
             if tb_t.size != fb_t.size:
                 raise InconsistentSizeError('Both branches must have the same size')
-            elif tb_t is not fb_t:
-                raise TypeError('Both branches must have the same type')
-            T = tb_t
+            elif issubclass(tb_t, fb_t):
+                T = fb_t
+            elif issubclass(fb_t, tb_t):
+                T = tb_t
+            else:
+                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
         elif isinstance(t_branch, BV_t):
-            f_branch = tb_t(f_branch)
             T = tb_t
         elif isinstance(f_branch, BV_t):
-            t_branch = fb_t(t_branch)
             T = fb_t
         else:
-            raise TypeError(f'Atleast one branch must be a {self.get_family().BitVector}')
+            raise TypeError(f'Atleast one branch must be a {BV_t}')
 
-
-        return t_branch if self else f_branch
+        return T(t_branch if self else f_branch)
 
     def __bool__(self) -> bool:
         return self._value
