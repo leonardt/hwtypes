@@ -144,7 +144,7 @@ class SMTBit(AbstractBit):
             if tb_t.size != fb_t.size:
                 raise InconsistentSizeError('Both branches must have the same size')
             elif tb_t is not fb_t:
-                raise TypeError(f'Both branches must have the same type. {tb_t} != {fb_t}')
+                raise TypeError(f'Both branches must have the same type. {tb_t} is not {fb_t}')
             T = tb_t
         elif isinstance(t_branch, BV_t):
             f_branch = tb_t(f_branch)
