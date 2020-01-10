@@ -434,7 +434,7 @@ class SumMeta(BoundMeta):
 
     @property
     def field_dict(cls):
-        return MappingProxyType({field.__name__ : field for field in cls.fields})
+        return MappingProxyType({field : field for field in cls.fields})
 
 
 class TaggedUnionMeta(AttrSyntax, SumMeta):

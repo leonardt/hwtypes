@@ -193,7 +193,7 @@ def test_sum():
     with pytest.raises(KeyError):
         Su[En2]
 
-    assert Su.field_dict == {'En1' : En1, 'Pr' : Pr}
+    assert Su.field_dict == {En1 : En1, Pr : Pr}
 
     with pytest.raises(TypeError):
         Su(1)
@@ -209,7 +209,7 @@ def test_sum():
     with pytest.raises(TypeError):
         s[Pr].value
 
-    assert s.value_dict == {'En1' : En1.a, 'Pr' : None}
+    assert s.value_dict == {En1 : En1.a, Pr : None}
 
     s[En1] = En1.b
     assert s[En1].value == En1.b
