@@ -50,33 +50,33 @@ class FPVector(AbstractFPVector):
         elif isinstance(value, FPVector):
             value = gmpy2.mpfr(value._value, self._ctx_.precision)
         elif isinstance(value, (int, float, type(gmpy2.mpz(0)), type(gmpy2.mpq(0)))):
-            value = gmpy2.mpfr(value)
+            value = gmpy2.mpfr(value, self._ctx_.precision)
         elif isinstance(value, str):
             try:
                 #Handles '0.5'
-                value = gmpy2.mpfr(value)
+                value = gmpy2.mpfr(value, self._ctx_.precision)
             except ValueError:
                 try:
                     #Handles '1/2'
-                    value = gmpy2.mpfr(gmpy2.mpq(value))
+                    value = gmpy2.mpfr(gmpy2.mpq(value), self._ctx_.precision)
                 except ValueError:
                     raise ValueError('Invalid string')
         elif hasattr(value, '__float__'):
-            value = gmpy2.mpfr(float(value))
+            value = gmpy2.mpfr(float(value), self._ctx_.precision)
         elif hasattr(value, '__int__'):
-            value = gmpy2.mpfr(int(value))
+            value = gmpy2.mpfr(int(value), self._ctx_.precision)
         else:
             try:
                 #if gmpy2 doesn't complain I wont
-                value = gmpy2.mpfr(value)
+                value = gmpy2.mpfr(value, self._ctx_.precision)
             except TypeError:
                 raise TypeError(f"Can't construct FPVector from {type(value)}")
 
         if gmpy2.is_nan(value) and not type(self).ieee_compliance:
             if gmpy2.is_signed(value):
-                self._value = gmpy2.mpfr('-inf')
+                self._value = gmpy2.mpfr('-inf', self._ctx_.precision)
             else:
-                self._value = gmpy2.mpfr('inf')
+                self._value = gmpy2.mpfr('inf', self._ctx_.precision)
 
         else:
             self._value = value
@@ -335,7 +335,7 @@ class FPVector(AbstractFPVector):
                     s = ['-0.' if sign[0] else '0.', mantissa.binary_string()]
                     s.append('e')
                     s.append(str(exp))
-                    return cls(gmpy2.mpfr(''.join(s),cls.mantissa_size+1, 2))
+                    return cls(gmpy2.mpfr(''.join(s), cls._ctx_.precision, 2))
             elif sign[0]:
                 return cls('-0')
             else:
@@ -357,7 +357,7 @@ class FPVector(AbstractFPVector):
             s = ['-1.' if sign[0] else '1.', mantissa.binary_string()]
             s.append('e')
             s.append(str(exp.as_sint()))
-            return cls(gmpy2.mpfr(''.join(s),cls.mantissa_size+1, 2))
+            return cls(gmpy2.mpfr(''.join(s), cls._ctx_.precision, 2))
 
 
     def __neg__(self): return self.fp_neg()
