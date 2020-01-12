@@ -1,10 +1,11 @@
 import pytest
 
-from hwtypes import Bit, AbstractBit
+from hwtypes import Bit, BitVector, AbstractBit
 import hwtypes.modifiers as modifiers
 from hwtypes.modifiers import make_modifier, is_modified, is_modifier, unwrap_modifier, wrap_modifier
 from hwtypes.modifiers import get_modifier, get_unmodified
-from hwtypes.adt import Tuple, Product, Sum
+from hwtypes.modifiers import strip_modifiers, push_modifiers
+from hwtypes.adt import Tuple, Product, Sum, Enum
 
 modifiers._DEBUG = True
 
@@ -85,5 +86,46 @@ def test_nested():
     ABCBit = C(B(A(Bit)))
     base, mods = unwrap_modifier(ABCBit)
     assert base is Bit
-    assert mods == [A,B,C]
-    assert wrap_modifier(Bit,mods) == ABCBit
+    assert mods == [A, B, C]
+    assert wrap_modifier(Bit, mods) == ABCBit
+
+def test_strip():
+    M0 = make_modifier("M0")
+    M1 = make_modifier("M1")
+    M2 = make_modifier("M2")
+    BV = BitVector
+
+    class E(Enum):
+        a=1
+        b=2
+    class A(Product, cache=True):
+        b = M0(Sum[Bit, M1(BV[6]), M2(E)])
+        c = M1(E)
+        d = M2(Tuple[M0(BV[3]), M1(M0(Bit))])
+
+    A_stripped = strip_modifiers(A)
+    assert A_stripped.b is Sum[Bit, BV[6], E]
+    assert A_stripped.c is E
+    assert A_stripped.d is Tuple[BV[3], Bit]
+
+def test_push():
+    M0 = make_modifier("M0")
+    M1 = make_modifier("M1")
+    M2 = make_modifier("M2")
+    BV = BitVector
+
+    class E(Enum):
+        a=1
+        b=2
+    class A(Product, cache=True):
+        b = M0(Sum[Bit, M1(BV[6]), M2(E)])
+        c = M1(E)
+        d = M2(Tuple[M0(BV[3]), M1(M0(Bit))])
+
+    A_pushed = push_modifiers(A)
+    A_pushed.b is Sum[M0(Bit), M0(M1(BV[6])), M0(M2(E))]
+    A_pushed.c is M1(E)
+    A_pushed.d is Tuple[M2(M0(BV[3])), M2(M1(M0(Bit)))]
+
+
+
