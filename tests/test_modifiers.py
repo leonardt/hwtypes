@@ -87,5 +87,5 @@ def test_nested():
     assert base is Bit
     assert mods == [A, B, C]
     assert wrap_modifier(Bit, mods) == ABCBit
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         wrap_modifier(Bit, [A, B, C, A])
