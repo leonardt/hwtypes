@@ -29,9 +29,25 @@ def test_substitute():
     expr1 = expr0.substitute((a0, a1), (b0, b1))
     assert expr1.value is (a1|b1).value
 
-def test_ite():
+
+def test_ite_tuple():
+    a = SMTBitVector[8](), SMTBit(), SMTBitVector[4]()
+    b = SMTBitVector[8](), SMTBit(), SMTBitVector[4]()
+    c = SMTBit()
+
+    res = c.ite(a, b)
+    assert isinstance(res, tuple)
+    assert len(res) == 3
+    assert isinstance(res[0], SMTBitVector[8])
+    assert isinstance(res[1], SMTBit)
+    assert isinstance(res[2], SMTBitVector[4])
+
+
+def test_ite_fail():
     p = SMTBit()
     t = SMTBit()
     f = SMTBitVector[1]()
     with pytest.raises(TypeError):
         res = p.ite(t, f)
+
+
