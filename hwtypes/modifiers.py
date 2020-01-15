@@ -107,7 +107,7 @@ def make_modifier(name, cache=False):
         except KeyError:
             pass
 
-    ModType = _ModifierMeta(name, (AbstractModifier, ), {})
+    ModType = _ModifierMeta(name, (AbstractModifier,), {})
 
     if cache:
         return _mod_cache.setdefault(name, ModType)
