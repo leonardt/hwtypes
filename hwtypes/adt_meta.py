@@ -60,7 +60,7 @@ RESERVED_ATTRS = frozenset(RESERVED_NAMES | RESERVED_SUNDERS)
 
 class Syntax(type):
     def __subclasscheck__(cls, sub):
-        return super().__subclasscheck__(getattr(sub, '_syntax_', None))
+        return super().__subclasscheck__(getattr(sub, '_syntax_', type(None)))
 
     def __instancecheck__(cls, instance):
         return cls.__subclasscheck__(type(instance))
