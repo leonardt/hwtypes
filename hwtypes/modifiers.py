@@ -1,7 +1,6 @@
 import types
 import weakref
-from .adt import Product, Sum, Enum, Tuple
-from .bit_vector_abc import AbstractBit, AbstractBitVector
+from .adt_meta import GetitemSyntax, AttrSyntax, EnumMeta
 
 
 __ALL__ = ['new', 'make_modifier', 'is_modified', 'is_modifier', 'get_modifier', 'get_unmodified', 'strip_modifiers', 'push_modifiers']
@@ -138,41 +137,27 @@ def wrap_modifier(T, mods):
 def strip_modifiers(adt_t):
     #remove modifiers from this level
     adt_t, _ = unwrap_modifier(adt_t)
-    if (issubclass(adt_t, AbstractBit) or issubclass(adt_t, AbstractBitVector)):
-        return adt_t
-    elif issubclass(adt_t, Enum):
-        return adt_t
-    elif issubclass(adt_t, Sum):
+    if isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
         new_fields = [strip_modifiers(sub_adt_t) for sub_adt_t in adt_t.fields]
-        return Sum[new_fields]
-    elif issubclass(adt_t, Product):
+        return adt_t.unbound_t[new_fields]
+    elif isinstance(adt_t, GetitemSyntax):
         new_fields = {n:strip_modifiers(sub_adt_t) for n, sub_adt_t in adt_t.field_dict.items()}
-        return Product.from_fields(adt_t.__name__, new_fields)
-    elif issubclass(adt_t, Tuple):
-        new_fields = [strip_modifiers(sub_adt_t) for sub_adt_t in adt_t.fields]
-        return Tuple[new_fields]
+        return adt_t.unbound_t.from_fields(adt_t.__name__, new_fields)
     else:
-        raise ValueError("Unreachable")
+        return adt_t
 
 #Takes an ADT type and pushes all the modifiers from internal nodes to leaf nodes
 def push_modifiers(adt_t, mods=[]):
     #remove modifiers from this level
     adt_t, new_mods = unwrap_modifier(adt_t)
     mods = new_mods + mods
-    if (issubclass(adt_t, AbstractBit) or issubclass(adt_t, AbstractBitVector)):
-        return wrap_modifier(adt_t, mods)
-    elif issubclass(adt_t, Enum):
-        return wrap_modifier(adt_t, mods)
-    elif issubclass(adt_t, Sum):
+    if isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
         new_fields = [push_modifiers(sub_adt_t, mods) for sub_adt_t in adt_t.fields]
-        return Sum[new_fields]
-    elif issubclass(adt_t, Product):
+        return adt_t.unbound_t[new_fields]
+    elif isinstance(adt_t, GetitemSyntax):
         new_fields = {n:push_modifiers(sub_adt_t, mods) for n, sub_adt_t in adt_t.field_dict.items()}
-        return Product.from_fields(adt_t.__name__, new_fields)
-    elif issubclass(adt_t, Tuple):
-        new_fields = [push_modifiers(sub_adt_t, mods) for sub_adt_t in adt_t.fields]
-        return Tuple[new_fields]
+        return adt_t.unbound_t.from_fields(adt_t.__name__, new_fields)
     else:
-        raise ValueError("Unreachable")
+        return wrap_modifier(adt_t, mods)
 
 
