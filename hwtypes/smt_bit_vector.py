@@ -2,6 +2,7 @@ import typing as tp
 import itertools as it
 import functools as ft
 from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily, InconsistentSizeError
+from .bit_vector_util import build_ite
 
 from abc import abstractmethod
 
@@ -139,58 +140,28 @@ class SMTBit(AbstractBit):
         given cls is type(self)
         and BV is cls.get_family().BitVector
 
-        if both branches are subclasses of cls
-        and one is a subclass of the other
-        return type is the parent type
+        if both branches are subclasses of cls and one is a subclass of the
+        other return type is the parent type
 
-        if both branches are subclasses of BV
-        and one is a subclass of the other
-        return type is the parent type
+        if both branches are subclasses of BV and one is a subclass of the
+        other return type is the parent type
 
-        if one branch is a subclass of cls
-        try to cast the other branch to that type
-        and return that type
+        if one branch is a subclass of cls try to cast the other branch to that
+        type and return that type
 
-        if one branch is a subclass of BV
-        try to cast the other branch to that type
-        and return that type
+        if one branch is a subclass of BV try to cast the other branch to that
+        type and return that type
+
+        if both branches are tuples of the same length, then these tests are
+        applied recursively to each pair of elements
 
         all other cases are errors
         '''
-        cls = type(self)
-        tb_t = type(t_branch)
-        fb_t = type(f_branch)
-        BV_t = self.get_family().BitVector
-        if isinstance(t_branch, cls) and isinstance(f_branch, cls):
-            if issubclass(tb_t, fb_t):
-                T = fb_t
-            elif issubclass(fb_t, tb_t):
-                T = tb_t
-            else:
-                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
-        elif isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
-            if tb_t.size != fb_t.size:
-                raise InconsistentSizeError('Both branches must have the same size')
-            elif issubclass(tb_t, fb_t):
-                T = fb_t
-            elif issubclass(fb_t, tb_t):
-                T = tb_t
-            else:
-                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
-        elif isinstance(t_branch, cls):
-            T = tb_t
-        elif isinstance(f_branch, cls):
-            T = fb_t
-        elif isinstance(t_branch, BV_t):
-            T = tb_t
-        elif isinstance(f_branch, BV_t):
-            T = fb_t
-        else:
-            raise TypeError(f'Cannot infer return type. Atleast one branch must be a {BV_t} or {cls}')
-        
-        t_branch = T(t_branch)
-        f_branch = T(f_branch)
-        return T(smt.Ite(self.value, t_branch.value, f_branch.value))
+        def _ite(t_branch, f_branch):
+            return smt.Ite(self.value, t_branch.value, f_branch.value)
+
+
+        return build_ite(_ite, type(self), t_branch, f_branch, True, True)
 
     def substitute(self, *subs : tp.List[tp.Tuple['SMTBit', 'SMTBit']]):
         return SMTBit(

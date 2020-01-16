@@ -88,6 +88,8 @@ def test_nested():
     assert base is Bit
     assert mods == [A, B, C]
     assert wrap_modifier(Bit, mods) == ABCBit
+    with pytest.raises(TypeError):
+        wrap_modifier(Bit, [A, B, C, A])
 
 def test_strip():
     M0 = make_modifier("M0")
@@ -126,6 +128,3 @@ def test_push():
     A_pushed.b is Sum[M0(Bit), M0(M1(BV[6])), M0(M2(E))]
     A_pushed.c is M1(E)
     A_pushed.d is Tuple[M2(M0(BV[3])), M2(M1(M0(Bit)))]
-
-
-
