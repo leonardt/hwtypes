@@ -1,8 +1,10 @@
 import pytest
 from hwtypes.adt import Product, Sum, Enum, Tuple, TaggedUnion
-from hwtypes.adt_meta import RESERVED_ATTRS, ReservedNameError
+from hwtypes.adt_meta import RESERVED_ATTRS, ReservedNameError, AttrSyntax, GetitemSyntax
 from hwtypes.modifiers import new
 from hwtypes.adt_util import rebind_bitvector
+from hwtypes import BitVector, AbstractBitVector, Bit, AbstractBit
+
 
 class En1(Enum):
     a = 0
@@ -386,3 +388,18 @@ def test_unbound_t(t, base):
 def test_deprecated(val):
     with pytest.warns(DeprecationWarning):
         val.value
+
+def test_adt_syntax():
+    # En1, Pr, Su, Tu, Ta
+    for T in (En1, Pr, Ta):
+        assert isinstance(T, AttrSyntax)
+        assert not isinstance(T, GetitemSyntax)
+
+    for T in (Su, Tu):
+        assert not isinstance(T, AttrSyntax)
+        assert isinstance(T, GetitemSyntax)
+
+    for T in (str, Bit, BitVector[4], AbstractBit, AbstractBitVector[4], int):
+        assert not isinstance(T, AttrSyntax)
+        assert not isinstance(T, GetitemSyntax)
+
