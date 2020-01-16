@@ -125,6 +125,8 @@ def unwrap_modifier(T):
 
 def wrap_modifier(T, mods):
     wrapped = T
+    if len(set(mods)) != len(mods):
+        raise TypeError(f"{mods} must contain no duplicates")
     for mod in mods:
         wrapped = mod(wrapped)
     return wrapped
