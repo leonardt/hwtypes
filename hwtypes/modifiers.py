@@ -138,11 +138,11 @@ def strip_modifiers(adt_t):
     #remove modifiers from this level
     adt_t, _ = unwrap_modifier(adt_t)
     if isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
-        new_fields = [strip_modifiers(sub_adt_t) for sub_adt_t in adt_t.fields]
-        return adt_t.unbound_t[new_fields]
-    elif isinstance(adt_t, GetitemSyntax):
         new_fields = {n:strip_modifiers(sub_adt_t) for n, sub_adt_t in adt_t.field_dict.items()}
         return adt_t.unbound_t.from_fields(adt_t.__name__, new_fields)
+    elif isinstance(adt_t, GetitemSyntax):
+        new_fields = [strip_modifiers(sub_adt_t) for sub_adt_t in adt_t.fields]
+        return adt_t.unbound_t[new_fields]
     else:
         return adt_t
 
@@ -152,11 +152,11 @@ def push_modifiers(adt_t, mods=[]):
     adt_t, new_mods = unwrap_modifier(adt_t)
     mods = new_mods + mods
     if isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
-        new_fields = [push_modifiers(sub_adt_t, mods) for sub_adt_t in adt_t.fields]
-        return adt_t.unbound_t[new_fields]
-    elif isinstance(adt_t, GetitemSyntax):
         new_fields = {n:push_modifiers(sub_adt_t, mods) for n, sub_adt_t in adt_t.field_dict.items()}
         return adt_t.unbound_t.from_fields(adt_t.__name__, new_fields)
+    elif isinstance(adt_t, GetitemSyntax):
+        new_fields = [push_modifiers(sub_adt_t, mods) for sub_adt_t in adt_t.fields]
+        return adt_t.unbound_t[new_fields]
     else:
         return wrap_modifier(adt_t, mods)
 
