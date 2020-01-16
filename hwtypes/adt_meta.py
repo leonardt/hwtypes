@@ -1,6 +1,6 @@
+from abc import ABCMeta, abstractmethod
 import itertools as it
 import typing as tp
-from abc import ABCMeta, abstractmethod
 import weakref
 
 from types import MappingProxyType
@@ -53,15 +53,27 @@ RESERVED_SUNDERS = frozenset({
     '_fields_',
     '_field_table_',
     '_unbound_base_',
+    '_syntax_',
 })
 
 RESERVED_ATTRS = frozenset(RESERVED_NAMES | RESERVED_SUNDERS)
 
+class Syntax(type):
+    def __subclasscheck__(cls, sub):
+        return super().__subclasscheck__(getattr(sub, '_syntax_', None))
+
+    def __instancecheck__(cls, instance):
+        return cls.__subclasscheck__(type(instance))
+
+
+class AttrSyntax(metaclass=Syntax): pass
+class GetitemSyntax(metaclass=Syntax): pass
 
 # Can't have abstract metaclass https://bugs.python.org/issue36881
-class GetitemSyntax: #(metaclass=ABCMeta):
+class _GetitemSyntax(type): #(metaclass=ABCMeta):
     # Should probaly do more than it currently does but it gets the job done
     ORDERED = False
+    _syntax_ = GetitemSyntax
 
     def __getitem__(cls, idx):
         if not isinstance(idx, tp.Iterable):
@@ -78,10 +90,12 @@ class GetitemSyntax: #(metaclass=ABCMeta):
     def _from_idx(cls, idx):
         pass
 
-class AttrSyntax(type): #, metaclass=ABCMeta):
+
+class _AttrSyntax(type): #, metaclass=ABCMeta):
     # Tells AttrSyntax which attrs are fields
     FIELDS_T = type
     ORDERED =  False
+    _syntax_ = AttrSyntax
 
     def __new__(mcs, name, bases, namespace, cache=False, **kwargs):
         fields = {}
@@ -160,7 +174,8 @@ class AttrSyntax(type): #, metaclass=ABCMeta):
     def _from_fields(mcs, fields, name, bases, ns, **kwargs):
         pass
 
-class BoundMeta(GetitemSyntax, type): #, metaclass=ABCMeta):
+
+class BoundMeta(_GetitemSyntax): #, metaclass=ABCMeta):
     # for legacy reasons
     ORDERED = True
 
@@ -284,6 +299,7 @@ class BoundMeta(GetitemSyntax, type): #, metaclass=ABCMeta):
     def is_cached(cls):
         return getattr(cls, '_cached_', False)
 
+
 class TupleMeta(BoundMeta):
     ORDERED = True
 
@@ -309,7 +325,7 @@ class TupleMeta(BoundMeta):
         return MappingProxyType({idx : field for idx, field in enumerate(cls.fields)})
 
 
-class ProductMeta(AttrSyntax, TupleMeta):
+class ProductMeta(_AttrSyntax, TupleMeta):
     FIELDS_T = type
     ORDERED = True
 
@@ -437,7 +453,7 @@ class SumMeta(BoundMeta):
         return MappingProxyType({field : field for field in cls.fields})
 
 
-class TaggedUnionMeta(AttrSyntax, SumMeta):
+class TaggedUnionMeta(_AttrSyntax, SumMeta):
     FIELDS_T = type
     ORDERED = False
 
@@ -495,11 +511,10 @@ class TaggedUnionMeta(AttrSyntax, SumMeta):
                 yield cls(**{tag: field()})
 
 
-class EnumMeta(AttrSyntax, BoundMeta):
+class EnumMeta(_AttrSyntax, BoundMeta):
     class Auto:
         def __repr__(self):
             return 'Auto()'
-
 
     FIELDS_T = int, Auto
     ORDERED = False
@@ -514,23 +529,23 @@ class EnumMeta(AttrSyntax, BoundMeta):
                 else:
                     raise TypeError('Can only inherit from one enum type')
 
-        t = super().__new__(mcs, name, bases, ns, **kwargs)
+        cls = super().__new__(mcs, name, bases, ns, **kwargs)
 
         name_table = dict()
         for name, value in fields.items():
-            elem = t.__new__(t)
-            t.__init__(elem, value)
+            elem = cls.__new__(cls)
+            cls.__init__(elem, value)
             setattr(elem, '_name_', name)
             name_table[name] = elem
-            setattr(t, name, elem)
+            setattr(cls, name, elem)
 
-        t._fields_ = tuple(name_table.values())
-        t._field_table_ = name_table
+        cls._fields_ = tuple(name_table.values())
+        cls._field_table_ = name_table
 
         if enum_base is not None:
-            t._unbound_base_ = enum_base
+            cls._unbound_base_ = enum_base
 
-        return t
+        return cls
 
     def __call__(cls, elem):
         if not isinstance(elem, cls):
