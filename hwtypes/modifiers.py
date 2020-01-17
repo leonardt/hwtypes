@@ -1,7 +1,9 @@
 import types
 import weakref
+from .adt_meta import GetitemSyntax, AttrSyntax, EnumMeta
 
-__ALL__ = ['new', 'make_modifier', 'is_modified', 'is_modifier', 'get_modifier', 'get_unmodified']
+
+__ALL__ = ['new', 'make_modifier', 'is_modified', 'is_modifier', 'get_modifier', 'get_unmodified', 'strip_modifiers', 'push_modifiers']
 
 
 _DEBUG = False
@@ -107,7 +109,7 @@ def make_modifier(name, cache=False):
         except KeyError:
             pass
 
-    ModType = _ModifierMeta(name, (AbstractModifier,), {})
+    ModType = _ModifierMeta(name, (AbstractModifier, ), {})
 
     if cache:
         return _mod_cache.setdefault(name, ModType)
@@ -130,3 +132,32 @@ def wrap_modifier(T, mods):
     for mod in mods:
         wrapped = mod(wrapped)
     return wrapped
+
+#Takes an ADT type and removes any modifiers on any level of the Tree
+def strip_modifiers(adt_t):
+    #remove modifiers from this level
+    adt_t, _ = unwrap_modifier(adt_t)
+    if isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
+        new_fields = {n:strip_modifiers(sub_adt_t) for n, sub_adt_t in adt_t.field_dict.items()}
+        return adt_t.unbound_t.from_fields(adt_t.__name__, new_fields)
+    elif isinstance(adt_t, GetitemSyntax):
+        new_fields = [strip_modifiers(sub_adt_t) for sub_adt_t in adt_t.fields]
+        return adt_t.unbound_t[new_fields]
+    else:
+        return adt_t
+
+#Takes an ADT type and pushes all the modifiers from internal nodes to leaf nodes
+def push_modifiers(adt_t, mods=[]):
+    #remove modifiers from this level
+    adt_t, new_mods = unwrap_modifier(adt_t)
+    mods = new_mods + mods
+    if isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
+        new_fields = {n:push_modifiers(sub_adt_t, mods) for n, sub_adt_t in adt_t.field_dict.items()}
+        return adt_t.unbound_t.from_fields(adt_t.__name__, new_fields)
+    elif isinstance(adt_t, GetitemSyntax):
+        new_fields = [push_modifiers(sub_adt_t, mods) for sub_adt_t in adt_t.fields]
+        return adt_t.unbound_t[new_fields]
+    else:
+        return wrap_modifier(adt_t, mods)
+
+
