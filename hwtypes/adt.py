@@ -79,8 +79,7 @@ class AnonymousProduct(Tuple, metaclass=AnonymousProductMeta):
 
 
 class Product(AnonymousProduct, metaclass=ProductMeta):
-    def __repr__(self):
-        return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict.items())})'
+    pass
 
 class Sum(metaclass=SumMeta):
     class Match:
