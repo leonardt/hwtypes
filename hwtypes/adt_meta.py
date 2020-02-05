@@ -76,6 +76,14 @@ class _GetitemSyntax(type): #(metaclass=ABCMeta):
     _syntax_ = GetitemSyntax
 
     def __getitem__(cls, idx):
+        idx = cls._get_idx(idx)
+        return cls._cache_handler(idx)
+
+    def _get_idx(cls, idx):
+        '''
+        Translates the index passed to __getitem__ into the index
+        that will be used in the rest of type machinery
+        '''
         if not isinstance(idx, tp.Iterable):
             idx = idx,
 
@@ -84,7 +92,20 @@ class _GetitemSyntax(type): #(metaclass=ABCMeta):
         else:
             idx = frozenset(idx)
 
-        return cls._from_idx(idx)
+        return idx
+
+    def _cache_handler(cls, idx):
+        mcs = type(cls)
+        try:
+            return mcs._class_cache[cls, idx]
+        except KeyError:
+            pass
+
+        t = cls._from_idx(idx)
+        mcs._class_cache[cls, idx] = t
+        t._cached_ = True
+        return t
+
 
     @abstractmethod
     def _from_idx(cls, idx):
@@ -232,33 +253,46 @@ class BoundMeta(_GetitemSyntax): #, metaclass=ABCMeta):
 
         return t
 
-    def _name_cb(cls, idx):
-        '''
-        Gives subclasses a chance define their name based on their idx.
-        '''
-        return '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
+
 
     def _from_idx(cls, idx) -> 'BoundMeta':
-        # Some of this should probably be in GetitemSyntax
-        mcs = type(cls)
-
-        try:
-            return mcs._class_cache[cls, idx]
-        except KeyError:
-            pass
-
+        mcs= type(cls)
         if cls.is_bound:
             raise TypeError('Type is already bound')
 
-        bases = [cls]
-        bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, BoundMeta))
-        bases = tuple(bases)
-        class_name = cls._name_cb(idx)
+        # By using callbacks instead of making these arguments
+        # and using a `if arg is None: arg = default_behavior` pattern
+        # sub types can extend default_behavior
+        class_name = cls._name_from_idx(idx)
+        bases = cls._bases_from_idx(idx)
+        fields = cls._fields_from_idx(idx)
+        namespace = cls._namespace_from_idx(idx)
 
-        t = mcs(class_name, bases, {'__module__' : cls.__module__}, fields=idx)
-        mcs._class_cache[cls, idx] = t
-        t._cached_ = True
+        t = mcs(class_name, bases, namespace, fields=fields)
         return t
+
+    def _name_from_idx(cls, idx):
+        '''
+        Gives subclasses a chance define their name based on their idx.
+        '''
+        # for legacy reasons we dispacth to `_name_cb`
+        # will be removed in future versions
+        return cls._name_cb(idx)
+
+    def _name_cb(cls, idx):
+        return '{}[{}]'.format(cls.__name__, ', '.join(map(lambda t : t.__name__, idx)))
+
+    def _bases_from_idx(cls, idx):
+        bases = [cls]
+        bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, type(cls)))
+        bases = tuple(bases)
+        return bases
+
+    def _fields_from_idx(cls, idx):
+        return idx
+
+    def _namespace_from_idx(cls, idx):
+        return {'__module__' : cls.__module__}
 
     @property
     def fields(cls):
@@ -324,60 +358,28 @@ class TupleMeta(BoundMeta):
     def field_dict(cls):
         return MappingProxyType({idx : field for idx, field in enumerate(cls.fields)})
 
+class AnonymousProductMeta(TupleMeta):
+    def _get_idx(cls, idx):
+        if not isinstance(idx, tp.Mapping):
+            raise TypeError()
+        return OrderedFrozenDict(idx)
 
-class ProductMeta(_AttrSyntax, TupleMeta):
-    FIELDS_T = type
-    ORDERED = True
-
-    @classmethod
-    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
-
-        def _get_tuple_base(bases):
-            for base in bases:
-                if not isinstance(base, mcs) and isinstance(base, TupleMeta):
-                    return base
-                r_base =_get_tuple_base(base.__bases__)
-                if r_base is not None:
-                    return r_base
-            return None
-
-        base = _get_tuple_base(bases)[tuple(fields.values())]
-        bases = *bases, base
-
-        # field_name -> tuple index
-        idx_table = dict((k, i) for i,k in enumerate(fields.keys()))
-
-        def _make_prop(field_type, idx):
-            @TypedProperty(field_type)
-            def prop(self):
-                return self[idx]
-
-            @prop.setter
-            def prop(self, value):
-                self[idx] = value
-
-            return prop
-
-        # add properties to namespace
-        # build properties
-        for field_name, field_type in fields.items():
-            assert field_name not in ns
-            idx = idx_table[field_name]
-            ns[field_name] = _make_prop(field_type, idx)
-
-        # this is all really gross but I don't know how to do this cleanly
+    def _from_idx(cls, idx):
         # need to build t so I can call super() in new and init
+        #(hence cannot construct them in the namespace call back)
         # need to exec to get proper signatures
-        t = super().__new__(mcs, name, bases, ns, **kwargs)
+        # need proper sigatures so both:
+        # Product_t(field=value, ...) and Product_t(value, ...) works
+        t = super()._from_idx(idx)
+        t._field_table_ = idx
 
-        # not strictly necessary could iterative over class dict finding
-        # TypedProperty to reconstruct _field_table_ but that seems bad
-        t._field_table_ = OrderedFrozenDict(fields)
+        name =  t.unbound_t.__name__
         gs = {name : t}
+
         ls = {}
 
-        arg_list = ','.join(fields.keys())
-        type_sig = ','.join(f'{k}: {v.__name__!r}' for k,v in fields.items())
+        arg_list = ','.join(idx.keys())
+        type_sig = ','.join(f'{k}: {v.__name__!r}' for k,v in idx.items())
 
         # build __new__
         __new__ = f'''
@@ -394,6 +396,78 @@ def __init__(self, {type_sig}):
 '''
         exec(__init__, gs, ls)
         t.__init__ = ls['__init__']
+        return t
+
+
+    def _bases_from_idx(cls, idx):
+        mcs = type(cls)
+        def _get_tuple_base(bases):
+            for base in bases:
+                if not isinstance(base, mcs) and isinstance(base, TupleMeta):
+                    return base
+                r_base =_get_tuple_base(base.__bases__)
+                if r_base is not None:
+                    return r_base
+            return None
+        bases = super()._bases_from_idx(idx)
+        base = _get_tuple_base(bases)[tuple(idx.values())]
+        return (*bases, base)
+
+    def _name_from_idx(cls, idx):
+        return '{}[{{{}}}]'.format(cls.__name__, ', '.join(f"'{k}': {t.__name__}" for k, t in idx.items()))
+
+    def _fields_from_idx(cls, idx):
+        return tuple(idx.values())
+
+    def _namespace_from_idx(cls, idx):
+        ns = super()._namespace_from_idx(idx)
+
+        # field_name -> tuple index
+        idx_table = dict((k, i) for i,k in enumerate(idx.keys()))
+
+        def _make_prop(field_type, idx):
+            @TypedProperty(field_type)
+            def prop(self):
+                return self[idx]
+
+            @prop.setter
+            def prop(self, value):
+                self[idx] = value
+
+            return prop
+
+        # add properties to namespace
+        for field_name, field_type in idx.items():
+            assert field_name not in ns
+            idx = idx_table[field_name]
+            ns[field_name] = _make_prop(field_type, idx)
+
+        return ns
+
+    @property
+    def field_dict(cls):
+        return MappingProxyType(cls._field_table_)
+
+
+class ProductMeta(_AttrSyntax, AnonymousProductMeta):
+    FIELDS_T = type
+    ORDERED = True
+
+    @classmethod
+    def _from_fields(mcs, fields, name, bases, ns, **kwargs):
+
+        def _get_anon_base(bases):
+            for base in bases:
+                if not isinstance(base, mcs) and isinstance(base, AnonymousProductMeta):
+                    return base
+                r_base =_get_anon_base(base.__bases__)
+                if r_base is not None:
+                    return r_base
+            return None
+        base = _get_anon_base(bases)[fields]
+        bases = *bases, base
+
+        t = super().__new__(mcs, name, bases, ns, **kwargs)
 
         return t
 
@@ -406,9 +480,6 @@ def __init__(self, {type_sig}):
         else:
             raise TypeError("Cannot bind product types with getitem")
 
-    @property
-    def field_dict(cls):
-        return MappingProxyType(cls._field_table_)
 
     def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
         new_fields = OrderedDict()

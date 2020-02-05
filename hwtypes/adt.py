@@ -1,4 +1,4 @@
-from .adt_meta import TupleMeta, ProductMeta, SumMeta, TaggedUnionMeta, EnumMeta, is_adt_type
+from .adt_meta import TupleMeta, AnonymousProductMeta, ProductMeta, SumMeta, TaggedUnionMeta, EnumMeta, is_adt_type
 from collections import OrderedDict
 from types import MappingProxyType
 import typing as tp
@@ -66,7 +66,7 @@ class Tuple(metaclass=TupleMeta):
         warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
         return self._value_
 
-class Product(Tuple, metaclass=ProductMeta):
+class AnonymousProduct(Tuple, metaclass=AnonymousProductMeta):
     def __repr__(self):
         return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict.items())})'
 
@@ -76,6 +76,11 @@ class Product(Tuple, metaclass=ProductMeta):
         for k in type(self).field_dict:
             d[k] = getattr(self, k)
         return MappingProxyType(d)
+
+
+class Product(AnonymousProduct, metaclass=ProductMeta):
+    def __repr__(self):
+        return f'{type(self).__name__}({", ".join(f"{k}={v}" for k,v in self.value_dict.items())})'
 
 class Sum(metaclass=SumMeta):
     class Match:
