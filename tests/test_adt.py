@@ -1,5 +1,5 @@
 import pytest
-from hwtypes.adt import Product, Sum, Enum, Tuple, TaggedUnion
+from hwtypes.adt import Product, Sum, Enum, Tuple, TaggedUnion, AnonymousProduct
 from hwtypes.adt_meta import RESERVED_ATTRS, ReservedNameError, AttrSyntax, GetitemSyntax
 from hwtypes.modifiers import new
 from hwtypes.adt_util import rebind_bitvector
@@ -16,6 +16,8 @@ class En2(Enum):
     d = 1
 
 Tu = Tuple[En1, En2]
+
+Ap = AnonymousProduct[{'x': En1, 'y': En2}]
 
 class Pr(Product, cache=True):
     x = En1
@@ -97,6 +99,47 @@ def test_tuple():
     with pytest.raises(TypeError):
         t[1] = 1
 
+def test_anonymous_product():
+    assert set(Ap.enumerate()) == {
+            Ap(En1.a, En2.c),
+            Ap(En1.a, En2.d),
+            Ap(En1.b, En2.c),
+            Ap(En1.b, En2.d),
+    }
+
+    assert Ap(En1.a, En2.c)._value_ == (En1.a, En2.c)
+    assert issubclass(Ap, AnonymousProduct)
+    assert isinstance(Ap(En1.a, En2.c), AnonymousProduct)
+    assert isinstance(Ap(En1.a, En2.c), Ap)
+
+    assert Ap(En1.a, En2.c) == Tu(En1.a, En2.c)
+    assert issubclass(Ap, Tu)
+    assert issubclass(Ap, Tuple)
+    assert isinstance(Ap(En1.a, En2.c), Tu)
+
+    assert Ap[0] == Ap.x == En1
+    assert Ap[1] == Ap.y == En2
+
+    assert Ap.field_dict == {'x' : En1, 'y' : En2 }
+
+    p = Ap(En1.a, En2.c)
+    with pytest.raises(TypeError):
+        Ap(En1.a, En1.a)
+
+    assert p[0] == p.x == En1.a
+    assert p[1] == p.y == En2.c
+    assert p.value_dict == {'x' : En1.a, 'y' : En2.c}
+
+    p.x = En1.b
+    assert p[0] == p.x == En1.b
+    assert p.value_dict == {'x' : En1.b, 'y' : En2.c}
+
+    p[0] = En1.a
+    assert p[0] == p.x == En1.a
+
+    with pytest.raises(TypeError):
+        p[0] = En2.c
+
 
 def test_product():
     assert set(Pr.enumerate()) == {
@@ -112,10 +155,10 @@ def test_product():
     assert isinstance(Pr(En1.a, En2.c), Product)
     assert isinstance(Pr(En1.a, En2.c), Pr)
 
-    assert Pr(En1.a, En2.c) == Tu(En1.a, En2.c)
-    assert issubclass(Pr, Tu)
-    assert issubclass(Pr, Tuple)
-    assert isinstance(Pr(En1.a, En2.c), Tu)
+    assert Pr(En1.a, En2.c) == Ap(En1.a, En2.c)
+    assert issubclass(Pr, Ap)
+    assert issubclass(Pr, AnonymousProduct)
+    assert isinstance(Pr(En1.a, En2.c), Ap)
 
     assert Pr[0] == Pr.x == En1
     assert Pr[1] == Pr.y == En2
