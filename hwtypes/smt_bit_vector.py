@@ -135,33 +135,11 @@ class SMTBit(AbstractBit):
         return type(self)(smt.Xor(self.value, other.value))
 
     def ite(self, t_branch, f_branch):
-        '''
-        typing works as follows:
-        given cls is type(self)
-        and BV is cls.get_family().BitVector
-
-        if both branches are subclasses of cls and one is a subclass of the
-        other return type is the parent type
-
-        if both branches are subclasses of BV and one is a subclass of the
-        other return type is the parent type
-
-        if one branch is a subclass of cls try to cast the other branch to that
-        type and return that type
-
-        if one branch is a subclass of BV try to cast the other branch to that
-        type and return that type
-
-        if both branches are tuples of the same length, then these tests are
-        applied recursively to each pair of elements
-
-        all other cases are errors
-        '''
-        def _ite(t_branch, f_branch):
-            return smt.Ite(self.value, t_branch.value, f_branch.value)
+        def _ite(select, t_branch, f_branch):
+            return smt.Ite(select.value, t_branch.value, f_branch.value)
 
 
-        return build_ite(_ite, type(self), t_branch, f_branch, True, True)
+        return build_ite(_ite, self, t_branch, f_branch)
 
     def substitute(self, *subs : tp.List[tp.Tuple['SMTBit', 'SMTBit']]):
         return SMTBit(

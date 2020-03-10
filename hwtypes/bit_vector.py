@@ -82,30 +82,24 @@ class Bit(AbstractBit):
     def ite(self, t_branch, f_branch):
         '''
         typing works as follows:
-        given cls is type(self)
-        and BV is cls.get_family().BitVector
+            if t_branch and f_branch are both Bit[Vector] types
+            from the same family, and type(t_branch) is type(f_branch),
+            then return type is t_branch.
 
-        if both branches are subclasses of cls and one is a subclass of the
-        other return type is the parent type
+            elif t_branch and f_branch are both Bit[Vector] types
+            from the same family, then return type is a polymorphic
+            type.
 
-        if both branches are subclasses of BV and one is a subclass of the
-        other return type is the parent type
+            elif t_brand and f_branch are tuples of the
+            same length, then these rules are applied recursively
 
-        if one branch is a subclass of cls try to cast the other branch to that
-        type and return that type
+            else there is an error
 
-        if one branch is a subclass of BV try to cast the other branch to that
-        type and return that type
-
-        if both branches are tuples of the same length, then these tests are
-        applied recursively to each pair of elements
-
-        all other cases are errors
         '''
-        def _ite(t_branch, f_branch):
-            return t_branch if self else f_branch
+        def _ite(select, t_branch, f_branch):
+            return t_branch if select else f_branch
 
-        return build_ite(_ite, type(self), t_branch, f_branch)
+        return build_ite(_ite, self, t_branch, f_branch)
 
     def __bool__(self) -> bool:
         return self._value
@@ -114,7 +108,7 @@ class Bit(AbstractBit):
         return int(self._value)
 
     def __repr__(self) -> str:
-        return 'Bit({})'.format(self._value)
+        return f'{type(self).__name__}({self._value})'
 
     def __hash__(self) -> int:
         return hash(self._value)
@@ -178,7 +172,7 @@ class BitVector(AbstractBitVector):
         return str(int(self))
 
     def __repr__(self):
-        return "BitVector[{size}]({value})".format(value=self._value, size=self.size)
+        return f'{type(self).__name__}({self._value})'
 
     @property
     def value(self):
@@ -476,10 +470,8 @@ class BitVector(AbstractBitVector):
             return self.bvult(other)
         except InconsistentSizeError as e:
             raise e from None
-        except TypeError:
+        except TypeError as e:
             return NotImplemented
-
-
 
     def as_uint(self):
         return self._value
@@ -541,28 +533,20 @@ class BitVector(AbstractBitVector):
         return BitVector[width](random.randint(0, (1 << width) - 1))
 
 
-
-
 class NumVector(BitVector):
     __hash__ = BitVector.__hash__
 
+
 class UIntVector(NumVector):
     __hash__ = NumVector.__hash__
-
-    def __repr__(self):
-        return "UIntVector[{size}]({value})".format(value=self._value, size=self.size)
 
     @staticmethod
     def random(width):
         return UIntVector[width](random.randint(0, (1 << width) - 1))
 
 
-
 class SIntVector(NumVector):
     __hash__ = NumVector.__hash__
-
-    def __repr__(self):
-        return "SIntVector[{size}]({value})".format(value=self._value, size=self.size)
 
     def __int__(self):
         return self.as_sint()

@@ -1,6 +1,98 @@
 import functools as ft
 import itertools as it
+import inspect
+import types
+
 from .bit_vector_abc import InconsistentSizeError
+from .bit_vector_abc import BitVectorMeta, AbstractBitVector, AbstractBit
+
+def _get_common_bases(t, s):
+    if issubclass(t, s):
+        return (s,)
+    elif issubclass(s, t):
+        return (t,)
+    else:
+        bases = set()
+        for t_ in t.__bases__:
+            bases.update(_get_common_bases(t_, s))
+
+        for s_ in s.__bases__:
+            bases.update(_get_common_bases(t, s_))
+
+        return tuple(bases)
+
+class PolyType(type):
+    _type_cache = {}
+    def __getitem__(cls, args):
+        try:
+            return cls._type_cache[args]
+        except KeyError:
+            pass
+
+        # In terms of typing it would make more sense to make
+        # select a instance paramater not a type paramater
+        # however for engineering reasons its a lot more
+        # convient to make it a type parameter.
+        T0, T1, select = args
+
+        if not cls._type_check(T0, T1):
+            raise TypeError(f'Cannot construct {cls} from {T0} and {T1}')
+        if T0.get_family() is not T1.get_family():
+            raise TypeError('Cannot construct PolyTypes across families')
+        elif not isinstance(select, AbstractBit):
+            raise TypeError('select must be a Bit')
+        elif select.get_family() is not T0.get_family():
+            raise TypeError('Cannot construct PolyTypes across families')
+
+        bases = _get_common_bases(T0, T1)
+        class_name = f'{cls.__name__}[{T0.__name__}, {T1.__name__}, {select}]'
+        meta, namespace, _ = types.prepare_class(class_name, bases)
+
+        d0 = dict(inspect.getmembers(T0))
+        d1 = dict(inspect.getmembers(T1))
+
+        attrs = d0.keys() & d1.keys()
+        for k in attrs:
+            if k in {'_info_', '__int__', '__repr__', '__str__'}:
+                continue
+
+            m0 = inspect.getattr_static(T0, k)
+            m1 = inspect.getattr_static(T1, k)
+            namespace[k] = build_VCall(select, [m0, m1])
+
+        new_cls = meta(class_name, bases, namespace)
+        return cls._type_cache.setdefault(args, new_cls)
+
+class PolyVector(metaclass=PolyType):
+    @classmethod
+    def _type_check(cls, T0, T1):
+        if (issubclass(T0, AbstractBitVector)
+            and issubclass(T1, AbstractBitVector)):
+            if T0.size != T1.size:
+                raise InconsistentSizeError(f'Cannot construct {cls} from {T0} and {T1}')
+            else:
+                return True
+        else:
+            return False
+
+class PolyBit(metaclass=PolyType):
+    @classmethod
+    def _type_check(cls, T0, T1):
+        return (issubclass(T0, AbstractBit)
+                and issubclass(T1, AbstractBit))
+
+def build_VCall(select, methods):
+    if methods[0] is methods[1]:
+        return methods[0]
+    else:
+        def VCall(*args, **kwargs):
+            v0 = methods[0](*args, **kwargs)
+            v1 = methods[1](*args, **kwargs)
+            if v0 is NotImplemented or v0 is NotImplemented:
+                return NotImplemented
+            return select.ite(v0, v1)
+        return VCall
+
 
 def get_branch_type(branch):
     if isinstance(branch, tuple):
@@ -8,7 +100,7 @@ def get_branch_type(branch):
     else:
         return type(branch)
 
-def determine_return_type(bit_t, bv_t, t_branch, f_branch):
+def determine_return_type(select, t_branch, f_branch):
     def _recurse(t_branch, f_branch):
         tb_t = get_branch_type(t_branch)
         fb_t = get_branch_type(f_branch)
@@ -29,33 +121,17 @@ def determine_return_type(bit_t, bv_t, t_branch, f_branch):
         elif (isinstance(tb_t, tuple)
               or isinstance(fb_t, tuple)):
             raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
-        elif isinstance(t_branch, bit_t) and isinstance(f_branch, bit_t):
-            if issubclass(tb_t, fb_t):
-                return fb_t
-            elif issubclass(fb_t, tb_t):
+        elif issubclass(tb_t, AbstractBit) and issubclass(fb_t, AbstractBit):
+            if tb_t is fb_t:
                 return tb_t
-            else:
-                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
-        elif isinstance(t_branch, bv_t) and isinstance(f_branch, bv_t):
-            if tb_t.size != fb_t.size:
-                raise InconsistentSizeError('Both branches must have the same size')
-            elif issubclass(tb_t, fb_t):
-                return fb_t
-            elif issubclass(fb_t, tb_t):
+            return PolyBit[tb_t, fb_t, select]
+        elif issubclass(tb_t, AbstractBitVector) and issubclass(fb_t, AbstractBitVector):
+            if tb_t is fb_t:
                 return tb_t
-            else:
-                raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
-        elif isinstance(t_branch, bit_t):
-            return tb_t
-        elif isinstance(f_branch, bit_t):
-            return fb_t
-        elif isinstance(t_branch, bv_t):
-            return tb_t
-        elif isinstance(f_branch, bv_t):
-            return fb_t
+            return PolyVector[tb_t, fb_t, select]
         else:
-            raise TypeError(f'Cannot infer return type. '
-                            f'Atleast one branch must be a {bv_t}, {bit_t}, or tuples')
+            raise TypeError(f'tb_t: {tb_t}, fb_t: {fb_t}')
+
     return _recurse(t_branch, f_branch)
 
 def coerce_branch(r_type, branch):
@@ -66,7 +142,7 @@ def coerce_branch(r_type, branch):
     else:
         return r_type(branch)
 
-def push_ite(ite, t_branch, f_branch):
+def push_ite(ite, select, t_branch, f_branch):
     def _recurse(t_branch, f_branch):
         if isinstance(t_branch, tuple):
             assert isinstance(f_branch, tuple)
@@ -76,23 +152,11 @@ def push_ite(ite, t_branch, f_branch):
                             zip(t_branch, f_branch)
                         ))
         else:
-            return ite(t_branch, f_branch)
+            return ite(select, t_branch, f_branch)
     return _recurse(t_branch, f_branch)
 
-def build_ite(ite, bit_t, t_branch, f_branch,
-              push_ite_to_leaves=False,
-              cast_return=False):
-    bv_t = bit_t.get_family().BitVector
-    r_type = determine_return_type(bit_t, bv_t, t_branch, f_branch)
-    t_branch = coerce_branch(r_type, t_branch)
-    f_branch = coerce_branch(r_type, f_branch)
-
-    if push_ite_to_leaves:
-        r_val = push_ite(ite, t_branch, f_branch)
-    else:
-        r_val = ite(t_branch, f_branch)
-
-    if cast_return:
-        r_val = coerce_branch(r_type, r_val)
-
+def build_ite(ite, select, t_branch, f_branch):
+    r_type = determine_return_type(select, t_branch, f_branch)
+    r_val = push_ite(ite, select, t_branch, f_branch)
+    r_val = coerce_branch(r_type, r_val)
     return r_val
