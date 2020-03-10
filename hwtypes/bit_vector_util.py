@@ -19,33 +19,33 @@ def _get_common_bases(t, s):
         for s_ in s.__bases__:
             bases.update(_get_common_bases(t, s_))
 
-        return tuple(bases)
+        # Filter to most specific types
+        bases_ = set()
+        for bi in bases:
+            if not any(issubclass(bj, bi) for bj in bases if bi is not bj):
+                bases_.add(bi)
+
+        return tuple(bases_)
+
+# used as a tag
+class PolyBase: pass
 
 class PolyType(type):
     _type_cache = {}
     def __getitem__(cls, args):
+        T0, T1 = args
         try:
             return cls._type_cache[args]
         except KeyError:
             pass
 
-        # In terms of typing it would make more sense to make
-        # select a instance paramater not a type paramater
-        # however for engineering reasons its a lot more
-        # convient to make it a type parameter.
-        T0, T1, select = args
-
         if not cls._type_check(T0, T1):
             raise TypeError(f'Cannot construct {cls} from {T0} and {T1}')
         if T0.get_family() is not T1.get_family():
             raise TypeError('Cannot construct PolyTypes across families')
-        elif not isinstance(select, AbstractBit):
-            raise TypeError('select must be a Bit')
-        elif select.get_family() is not T0.get_family():
-            raise TypeError('Cannot construct PolyTypes across families')
 
-        bases = _get_common_bases(T0, T1)
-        class_name = f'{cls.__name__}[{T0.__name__}, {T1.__name__}, {select}]'
+        bases = *_get_common_bases(T0, T1), PolyBase
+        class_name = f'{cls.__name__}[{T0.__name__}, {T1.__name__}]'
         meta, namespace, _ = types.prepare_class(class_name, bases)
 
         d0 = dict(inspect.getmembers(T0))
@@ -58,9 +58,22 @@ class PolyType(type):
 
             m0 = inspect.getattr_static(T0, k)
             m1 = inspect.getattr_static(T1, k)
-            namespace[k] = build_VCall(select, [m0, m1])
+            namespace[k] = build_VCall([m0, m1])
 
         new_cls = meta(class_name, bases, namespace)
+
+        genv = {'base': new_cls}
+        lenv = {}
+
+        # build __init__
+        __init__ = f'''
+def __init__(self, *args, _poly_select_, **kwargs):
+    self._poly_select_ = _poly_select_
+    return super(base, self).__init__(*args, **kwargs)
+'''
+        exec(__init__, genv, lenv)
+        new_cls.__init__ = lenv['__init__']
+
         return cls._type_cache.setdefault(args, new_cls)
 
 class PolyVector(metaclass=PolyType):
@@ -81,13 +94,13 @@ class PolyBit(metaclass=PolyType):
         return (issubclass(T0, AbstractBit)
                 and issubclass(T1, AbstractBit))
 
-def build_VCall(select, methods):
+def build_VCall(methods):
     if methods[0] is methods[1]:
         return methods[0]
     else:
-        def VCall(*args, **kwargs):
-            v0 = methods[0](*args, **kwargs)
-            v1 = methods[1](*args, **kwargs)
+        def VCall(self, *args, **kwargs):
+            v0 = methods[0](self, *args, **kwargs)
+            v1 = methods[1](self, *args, **kwargs)
             if v0 is NotImplemented or v0 is NotImplemented:
                 return NotImplemented
             return select.ite(v0, v1)
@@ -100,7 +113,7 @@ def get_branch_type(branch):
     else:
         return type(branch)
 
-def determine_return_type(select, t_branch, f_branch):
+def determine_return_type(t_branch, f_branch):
     def _recurse(t_branch, f_branch):
         tb_t = get_branch_type(t_branch)
         fb_t = get_branch_type(f_branch)
@@ -124,21 +137,23 @@ def determine_return_type(select, t_branch, f_branch):
         elif issubclass(tb_t, AbstractBit) and issubclass(fb_t, AbstractBit):
             if tb_t is fb_t:
                 return tb_t
-            return PolyBit[tb_t, fb_t, select]
+            return PolyBit[tb_t, fb_t]
         elif issubclass(tb_t, AbstractBitVector) and issubclass(fb_t, AbstractBitVector):
             if tb_t is fb_t:
                 return tb_t
-            return PolyVector[tb_t, fb_t, select]
+            return PolyVector[tb_t, fb_t]
         else:
             raise TypeError(f'tb_t: {tb_t}, fb_t: {fb_t}')
 
     return _recurse(t_branch, f_branch)
 
-def coerce_branch(r_type, branch):
+def coerce_branch(r_type, select, branch):
     if isinstance(r_type, tuple):
         assert isinstance(branch, tuple)
         assert len(r_type) == len(branch)
-        return tuple(coerce_branch(t, arg) for t, arg in zip(r_type, branch))
+        return tuple(coerce_branch(t, select, arg) for t, arg in zip(r_type, branch))
+    elif issubclass(r_type, PolyBase):
+        return r_type(branch, _poly_select_ = select)
     else:
         return r_type(branch)
 
@@ -156,7 +171,7 @@ def push_ite(ite, select, t_branch, f_branch):
     return _recurse(t_branch, f_branch)
 
 def build_ite(ite, select, t_branch, f_branch):
-    r_type = determine_return_type(select, t_branch, f_branch)
+    r_type = determine_return_type(t_branch, f_branch)
     r_val = push_ite(ite, select, t_branch, f_branch)
-    r_val = coerce_branch(r_type, r_val)
+    r_val = coerce_branch(r_type, select, r_val)
     return r_val

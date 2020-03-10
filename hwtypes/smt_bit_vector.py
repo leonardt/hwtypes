@@ -643,7 +643,6 @@ class SMTBitVector(AbstractBitVector):
 class SMTNumVector(SMTBitVector):
     pass
 
-
 class SMTUIntVector(SMTNumVector):
     pass
 

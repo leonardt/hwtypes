@@ -5,7 +5,7 @@ from itertools import product
 
 from hwtypes import SIntVector, BitVector, Bit
 from hwtypes.bit_vector_abc import InconsistentSizeError
-from hwtypes.bit_vector_util import PolyVector
+from hwtypes.bit_vector_util import PolyVector, PolyBase
 
 def _rand_bv(width):
     return BitVector[width](random.randint(0, (1 << width) - 1))
@@ -94,11 +94,11 @@ def test_ite(t_constructor, t_size, f_constructor, f_size):
     elif t_is_bv_constructor and f_is_bv_constructor and sizes_equal:
         # Different bv_constuctor
         res = pred.ite(t, f)
-        assert type(res) is PolyVector[type(t), type(f), pred]
+        assert type(res) is PolyVector[type(t), type(f)]
         # The bases should be the most specific types that are common
-        # to both branches. As SIntVect[size] is a subclass of
+        # to both branches and PolyBase. As SIntVect[size] is a subclass of
         # BitVector[size], BitVector[size] is such a type.
-        assert type(res).__bases__ == (BitVector[t_size],)
+        assert type(res).__bases__ == (BitVector[t_size], PolyBase)
     elif t_is_bv_constructor and f_is_bv_constructor and not sizes_equal:
         # BV with different size
         with pytest.raises(InconsistentSizeError):
