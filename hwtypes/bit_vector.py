@@ -518,7 +518,7 @@ class BitVector(AbstractBitVector):
         return self.concat(T[1](self[-1]).repeat(ext))
 
     def ext(self, ext):
-        return self.zext(other)
+        return self.zext(ext)
 
     def zext(self, ext):
         ext = int(ext)

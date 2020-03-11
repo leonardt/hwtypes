@@ -31,7 +31,9 @@ class PolyType(type):
             raise TypeError('Cannot construct PolyTypes across families')
 
 
-        bases = *cls._get_bases(T0, T1), PolyBase
+        # stupid generator to make sure PolyBase is not replicated
+        # and always comes last
+        bases = *(b for b in cls._get_bases(T0, T1) if b is not PolyBase), PolyBase
         class_name = f'{cls.__name__}[{T0.__name__}, {T1.__name__}, {select}]'
         meta, namespace, _ = types.prepare_class(class_name, bases)
 
