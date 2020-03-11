@@ -593,7 +593,7 @@ class SMTBitVector(AbstractBitVector):
             return self.bvult(other)
         except InconsistentSizeError as e:
             raise e from None
-        except TypeError:
+        except TypeError as e:
             return NotImplemented
 
 
@@ -692,7 +692,7 @@ class SMTSIntVector(SMTNumVector):
             return self.bvslt(other)
         except InconsistentSizeError as e:
             raise e from None
-        except TypeError:
+        except TypeError as e:
             return NotImplemented
 
     def __le__(self, other):
@@ -703,6 +703,8 @@ class SMTSIntVector(SMTNumVector):
         except TypeError:
             return NotImplemented
 
+    def ext(self, other):
+        return self.sext(other)
 
 
 

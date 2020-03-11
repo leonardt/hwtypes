@@ -94,11 +94,10 @@ def test_ite(t_constructor, t_size, f_constructor, f_size):
     elif t_is_bv_constructor and f_is_bv_constructor and sizes_equal:
         # Different bv_constuctor
         res = pred.ite(t, f)
-        assert type(res) is PolyVector[type(t), type(f)]
         # The bases should be the most specific types that are common
-        # to both branches and PolyBase. As SIntVect[size] is a subclass of
-        # BitVector[size], BitVector[size] is such a type.
-        assert type(res).__bases__ == (BitVector[t_size], PolyBase)
+        # to both branches and PolyBase.
+        assert isinstance(res, PolyBase)
+        assert isinstance(res, BitVector[t_size])
     elif t_is_bv_constructor and f_is_bv_constructor and not sizes_equal:
         # BV with different size
         with pytest.raises(InconsistentSizeError):

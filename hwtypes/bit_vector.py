@@ -612,7 +612,6 @@ class SIntVector(NumVector):
         w = width - 1
         return SIntVector[width](random.randint(-(1 << w), (1 << w) - 1))
 
-    @bv_cast
     def ext(self, other):
         return self.sext(other)
 
