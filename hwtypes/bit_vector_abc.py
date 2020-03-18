@@ -16,7 +16,7 @@ class InconsistentSizeError(TypeError): pass
 #I want to be able differentiate an old style call
 #BitVector(val, None) from BitVector(val)
 _MISSING = object()
-class AbstractBitVectorMeta(ABCMeta):
+class AbstractBitVectorMeta(type): #:(ABCMeta):
     # BitVectorType, size :  BitVectorType[size]
     _class_cache = weakref.WeakValueDictionary()
 
@@ -319,5 +319,6 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     def zext(self, other) -> 'AbstractBitVector':
         pass
 
+BitVectorMeta = AbstractBitVectorMeta
 
 _Family_ = TypeFamily(AbstractBit, AbstractBitVector, None, None)
