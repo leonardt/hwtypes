@@ -10,6 +10,8 @@ import pysmt
 import pysmt.shortcuts as smt
 from pysmt.typing import  BVType, BOOL
 
+
+from collections import defaultdict
 import re
 import warnings
 import weakref
@@ -18,16 +20,13 @@ import random
 
 __ALL__ = ['SMTBitVector', 'SMTNumVector', 'SMTSIntVector', 'SMTUIntVector']
 
-_var_counter = it.count()
+_var_counters = defaultdict(it.count)
 _name_table = weakref.WeakValueDictionary()
-_free_names = []
 
-def _gen_name():
-    if _free_names:
-        return _free_names.pop()
-    name = f'V_{next(_var_counter)}'
+def _gen_name(prefix='V'):
+    name = f'{prefix}_{next(_var_counters[prefix])}'
     while name in _name_table:
-        name = f'V_{next(_var_counter)}'
+        name = f'{prefix}_{next(_var_counters[prefix])}'
     return name
 
 _name_re = re.compile(r'V_\d+')
@@ -61,9 +60,11 @@ class SMTBit(AbstractBit):
     def get_family() -> TypeFamily:
         return _Family_
 
-    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC):
-        if name is not AUTOMATIC and value is not SMYBOLIC:
+    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC, prefix=AUTOMATIC):
+        if (name is not AUTOMATIC or prefix is not AUTOMATIC) and value is not SMYBOLIC:
             raise TypeError('Can only name symbolic variables')
+        elif name is not AUTOMATIC and prefix is not AUTOMATIC:
+            raise ValueError('Can only set either name or prefix not both')
         elif name is not AUTOMATIC:
             if not isinstance(name, str):
                 raise TypeError('Name must be string')
@@ -71,6 +72,9 @@ class SMTBit(AbstractBit):
                 raise ValueError(f'Name {name} already in use')
             elif _name_re.fullmatch(name):
                 warnings.warn('Name looks like an auto generated name, this might break things')
+            _name_table[name] = self
+        elif prefix is not AUTOMATIC:
+            name = _gen_name(prefix)
             _name_table[name] = self
         elif name is AUTOMATIC and value is SMYBOLIC:
             name = _gen_name()
@@ -176,9 +180,11 @@ class SMTBitVector(AbstractBitVector):
     def get_family() -> TypeFamily:
         return _Family_
 
-    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC):
-        if name is not AUTOMATIC and value is not SMYBOLIC:
+    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC, prefix=AUTOMATIC):
+        if (name is not AUTOMATIC or prefix is not AUTOMATIC) and value is not SMYBOLIC:
             raise TypeError('Can only name symbolic variables')
+        elif name is not AUTOMATIC and prefix is not AUTOMATIC:
+            raise ValueError('Can only set either name or prefix not both')
         elif name is not AUTOMATIC:
             if not isinstance(name, str):
                 raise TypeError('Name must be string')
@@ -187,9 +193,13 @@ class SMTBitVector(AbstractBitVector):
             elif _name_re.fullmatch(name):
                 warnings.warn('Name looks like an auto generated name, this might break things')
             _name_table[name] = self
+        elif prefix is not AUTOMATIC:
+            name = _gen_name(prefix)
+            _name_table[name] = self
         elif name is AUTOMATIC and value is SMYBOLIC:
             name = _gen_name()
             _name_table[name] = self
+
         self._name = name
 
         T = BVType(self.size)
