@@ -31,8 +31,17 @@ class Counter(metaclass=CounterMeta):
 
 
 def test_implicit_inheritance():
-    assert isinstance(Counter(), BitVectorProtocol)
-    assert issubclass(Counter, BitVectorProtocolMeta)
+    assert not issubclass(BitVectorProtocol, BitVectorProtocolMeta)
+
+    counter = Counter()
+    assert isinstance(counter, BitVectorProtocol)
+    assert isinstance(Counter, BitVectorProtocolMeta)
+    assert not isinstance(counter, BitVectorProtocolMeta)
+
+    assert issubclass(Counter, BitVectorProtocol)
+    assert issubclass(CounterMeta, BitVectorProtocolMeta)
+    assert not issubclass(Counter, BitVectorProtocolMeta)
+
 
 
 def test_protocol_ite():

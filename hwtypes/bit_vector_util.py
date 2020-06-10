@@ -13,21 +13,23 @@ class _BitVectorProtocolMetaMeta(type):
         # mcs should be BitVectorProtocolMeta
         return issubclass(type(cls), mcs)
 
-    def __subclasscheck__(mcs, t):
-        return hasattr(t, '_bitvector_t_')
+    def __subclasscheck__(mcs, sub):
+        # `not isinstance(sub, mcs)` blocks BitVectorProtocol from
+        # looking like a subclass of BitVectorProtocolMeta
+        # which it otherwise would because its type defines `_bitvector_t_`.
+        return hasattr(sub, '_bitvector_t_') and not isinstance(sub, mcs)
 
 
 class BitVectorProtocolMeta(type, metaclass=_BitVectorProtocolMetaMeta):
     # Any type that has _bitvector_t_ shall be considered
     # a instance of BitVectorProtocolMeta
     def __instancecheck__(cls, obj):
-        # cls should be BitVectorProtocol
         return issubclass(type(obj), cls)
 
-    def __subclasscheck__(cls, t):
-        return (isinstance(t, BitVectorProtocolMeta)
-                and hasattr(t, '_from_bitvector_')
-                and hasattr(t, '_to_bitvector_'))
+    def __subclasscheck__(cls, sub):
+        return (isinstance(sub, type(cls))
+                and hasattr(sub, '_from_bitvector_')
+                and hasattr(sub, '_to_bitvector_'))
 
     @abstractmethod
     def _bitvector_t_(cls): pass
@@ -203,7 +205,7 @@ def determine_return_type(select, t_branch, f_branch):
             if tb_t is fb_t:
                 return tb_t
             return PolyVector[tb_t, fb_t, select]
-        elif tb_t is fb_t and issubclass(tb_t, BitVectorProtocolMeta):
+        elif tb_t is fb_t and issubclass(tb_t, BitVectorProtocol):
             return tb_t._from_bitvector_
         else:
             raise TypeError(f'tb_t: {tb_t}, fb_t: {fb_t}')
