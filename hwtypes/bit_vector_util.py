@@ -1,10 +1,49 @@
+from abc import abstractmethod
 import functools as ft
-import itertools as it
 import inspect
 import types
 
 from .bit_vector_abc import InconsistentSizeError
 from .bit_vector_abc import BitVectorMeta, AbstractBitVector, AbstractBit
+
+
+# needed to define isinstance(..., BitVectorProtocolMeta)
+class _BitVectorProtocolMetaMeta(type):
+    def __instancecheck__(mcs, cls):
+        # mcs should be BitVectorProtocolMeta
+        return issubclass(type(cls), mcs)
+
+    def __subclasscheck__(mcs, t):
+        return hasattr(t, '_bitvector_t_')
+
+
+class BitVectorProtocolMeta(type, metaclass=_BitVectorProtocolMetaMeta):
+    # Any type that has _bitvector_t_ shall be considered
+    # a instance of BitVectorProtocolMeta
+    def __instancecheck__(cls, obj):
+        # cls should be BitVectorProtocol
+        return issubclass(type(obj), cls)
+
+    def __subclasscheck__(cls, t):
+        return (isinstance(t, BitVectorProtocolMeta)
+                and hasattr(t, '_from_bitvector_')
+                and hasattr(t, '_to_bitvector_'))
+
+    @abstractmethod
+    def _bitvector_t_(cls): pass
+
+
+class BitVectorProtocol(metaclass=BitVectorProtocolMeta):
+    # Any object whose type is an instance of BitVectorProtocolMeta (see above)
+    # and which defines _to_bitvector_ and _from_bitvector_ shall be considered
+    # an instance of BitVectorProtocol
+    @classmethod
+    @abstractmethod
+    def _from_bitvector_(cls, bv): pass
+
+    @abstractmethod
+    def _to_bitvector_(self): pass
+
 
 # used as a tag
 class PolyBase: pass
@@ -149,15 +188,10 @@ def determine_return_type(select, t_branch, f_branch):
             and isinstance(fb_t, tuple)
             and len(tb_t) == len(fb_t)):
             try:
-                return tuple(
-                    it.starmap(
-                        _recurse,
-                        zip(t_branch, f_branch)
-                    )
-                )
+                return tuple(_recurse(t, f) for t, f in zip(t_branch, f_branch))
             except (TypeError, InconsistentSizeError):
                 raise TypeError(f'Branches have inconsistent types: '
-                                f'{tb_t} and {fb_t}') from None
+                                f'{tb_t} and {fb_t}')
         elif (isinstance(tb_t, tuple)
               or isinstance(fb_t, tuple)):
             raise TypeError(f'Branches have inconsistent types: {tb_t} and {fb_t}')
@@ -169,6 +203,8 @@ def determine_return_type(select, t_branch, f_branch):
             if tb_t is fb_t:
                 return tb_t
             return PolyVector[tb_t, fb_t, select]
+        elif tb_t is fb_t and issubclass(tb_t, BitVectorProtocolMeta):
+            return tb_t._from_bitvector_
         else:
             raise TypeError(f'tb_t: {tb_t}, fb_t: {fb_t}')
 
@@ -187,10 +223,10 @@ def push_ite(ite, select, t_branch, f_branch):
         if isinstance(t_branch, tuple):
             assert isinstance(f_branch, tuple)
             assert len(t_branch) == len(f_branch)
-            return tuple(it.starmap(
-                            _recurse,
-                            zip(t_branch, f_branch)
-                        ))
+            return tuple(_recurse(t, f) for t, f in  zip(t_branch, f_branch))
+        elif isinstance(t_branch, BitVectorProtocol):
+            assert type(t_branch) is type(f_branch)
+            return _recurse(t_branch._to_bitvector_(), f_branch._to_bitvector_())
         else:
             return ite(select, t_branch, f_branch)
     return _recurse(t_branch, f_branch)
