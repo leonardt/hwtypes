@@ -10,7 +10,7 @@ class FlattenT(ADTVisitor):
         self.leaves.append(n)
 
     def visit_Enum(self, n):
-        self.leaves.extend(n.field_dict.values())
+        self.leaves.append(n)
 
 
 class FlattenI(ADTInstVisitor):
@@ -22,7 +22,6 @@ class FlattenI(ADTInstVisitor):
 
     def visit_Enum(self, n):
         self.leaves.append(n._value_)
-
 
 
 class T1: pass
@@ -47,7 +46,7 @@ def test_visit():
     flattener = FlattenT()
     flattener.visit(Root)
 
-    assert flattener.leaves == [T1, T2, T3, T4, T5, Root.Tag.tag_a, Root.Tag.tag_i]
+    assert flattener.leaves == [T1, T2, T3, T4, T5, Root.Tag]
 
 def test_visit_i():
     t1 = T1()
