@@ -1,10 +1,76 @@
+from abc import ABCMeta, abstractmethod
 from .adt_meta import BoundMeta
 from .bit_vector_abc import AbstractBitVectorMeta, AbstractBitVector, AbstractBit
 
 from .util import _issubclass
 from hwtypes.modifiers import unwrap_modifier, wrap_modifier, is_modified
-from .adt import Product, Sum, Tuple
+from .adt import Product, Sum, Tuple, Enum, TaggedUnion
 from inspect import isclass
+
+
+
+class _ADTVisitor(metaclass=ABCMeta):
+    def visit(self, adt_t):
+        # The order here is important because Product < Tuple
+        # and TaggedUnion < Sum
+        if self.check_t(adt_t, Enum):
+            self.visit_Enum(adt_t)
+        elif self.check_t(adt_t, Product):
+            self.visit_Product(adt_t)
+        elif self.check_t(adt_t, Tuple):
+            self.visit_Tuple(adt_t)
+        elif self.check_t(adt_t, TaggedUnion):
+            self.visit_TaggedUnion(adt_t)
+        elif self.check_t(adt_t, Sum):
+            self.visit_Sum(adt_t)
+        else:
+            self.visit_leaf(adt_t)
+
+    @abstractmethod
+    def check_t(self, adt_t): pass
+
+    @abstractmethod
+    def generic_visit(self, adt_t): pass
+
+    def visit_Leaf(self, adt_t):  pass
+
+    def visit_Enum(self, adt_t): pass
+
+    def visit_Product(self, adt_t):
+        self.generic_visit(adt_t)
+
+    def visit_Tuple(self, adt_t):
+        self.generic_visit(adt_t)
+
+    def visit_TaggedUnion(self, adt_t):
+        self.generic_visit(adt_t)
+
+    def visit_Sum(self, adt_t):
+        self.generic_visit(adt_t)
+
+
+class ADTVisitor(_ADTVisitor):
+    '''
+    Visitor for ADTs
+    '''
+    check_t = staticmethod(_issubclass)
+
+    def generic_visit(self, adt_t):
+        for T in adt_t.field_dict.values():
+            self.visit(T)
+
+
+class ADTInstVisitor(_ADTVisitor):
+    '''
+    Visitor for ADT instances
+    '''
+    check_t = staticmethod(isinstance)
+
+
+    def generic_visit(self, adt):
+        for k, v in adt.value_dict.items():
+            if v is not None:
+                self.visit(v)
 
 def rebind_bitvector(
         adt,
