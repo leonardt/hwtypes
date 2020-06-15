@@ -118,7 +118,7 @@ class _AttrSyntax(type): #, metaclass=ABCMeta):
     ORDERED =  False
     _syntax_ = AttrSyntax
 
-    def __new__(mcs, name, bases, namespace, cache=False, **kwargs):
+    def __new__(mcs, name, bases, namespace, cache=True, **kwargs):
         fields = {}
         ns = {}
 
@@ -253,8 +253,6 @@ class BoundMeta(_GetitemSyntax): #, metaclass=ABCMeta):
 
         return t
 
-
-
     def _from_idx(cls, idx) -> 'BoundMeta':
         mcs= type(cls)
         if cls.is_bound:
@@ -357,6 +355,7 @@ class TupleMeta(BoundMeta):
     @property
     def field_dict(cls):
         return MappingProxyType({idx : field for idx, field in enumerate(cls.fields)})
+
 
 class AnonymousProductMeta(TupleMeta):
     def _get_idx(cls, idx):

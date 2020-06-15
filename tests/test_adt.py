@@ -19,12 +19,12 @@ Tu = Tuple[En1, En2]
 
 Ap = AnonymousProduct[{'x': En1, 'y': En2}]
 
-class Pr(Product, cache=True):
+class Pr(Product):
     x = En1
     y = En2
 
 
-class Pr2(Product):
+class Pr2(Product, cache=False):
     x = En1
     y = En2
 
@@ -36,12 +36,12 @@ class Pr3(Product, cache=True):
 
 Su = Sum[En1, Pr]
 
-class Ta(TaggedUnion, cache=True):
+class Ta(TaggedUnion):
     x = En1
     y = En1
     z = Pr
 
-class Ta2(TaggedUnion):
+class Ta2(TaggedUnion, cache=False):
     x = En1
     y = En1
     z = Pr
@@ -206,11 +206,20 @@ def test_product_from_fields():
 
 
 def test_product_caching():
-    assert Pr != Pr2
-    assert Pr != Pr3
+    global Pr
+    assert Pr is not Pr2
+    assert Pr is not Pr3
     assert Pr is Product.from_fields('Pr', {'x' : En1, 'y' : En2 }, cache=True)
     assert Pr.field_dict == Pr2.field_dict
     assert Pr.field_dict != Pr3.field_dict
+    Pr_ = Pr
+
+    class Pr(Product):
+        x = En1
+        y = En2
+
+    assert Pr_ is Pr
+
 
 
 def test_sum():
