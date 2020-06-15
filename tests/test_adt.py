@@ -373,10 +373,29 @@ def test_tagged_union_from_fields():
 
 
 def test_tagged_union_caching():
-    assert Ta != Ta2
-    assert Ta != Ta3
+    global Ta
+    assert Ta is not Ta2
+    assert Ta is not Ta3
     assert Ta is TaggedUnion.from_fields('Ta', Ta3.field_dict, cache=True)
+    assert Ta2 is not TaggedUnion.from_fields('Ta2', Ta2.field_dict, cache=True)
+    assert Ta2 is not TaggedUnion.from_fields('Ta2', Ta2.field_dict, cache=False)
     assert Ta.field_dict == Ta2.field_dict == Ta3.field_dict
+
+    Ta_ = Ta
+
+    class Ta(TaggedUnion):
+        x = En1
+        y = En1
+        z = Pr
+
+    assert Ta_ is Ta
+
+    class Ta(TaggedUnion):
+        y = En1
+        x = En1
+        z = Pr
+
+    assert Ta_ is Ta
 
 
 def test_new():
