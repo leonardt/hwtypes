@@ -86,6 +86,7 @@ def test_tuple():
     assert Tu[1] == En2
 
     t = Tu(En1.a, En2.c)
+    assert t == Tu.from_values(t.value_dict)
     assert (t[0],t[1]) == (En1.a,En2.c)
     t[0] = En1.b
     assert (t[0],t[1]) == (En1.b,En2.c)
@@ -123,6 +124,7 @@ def test_anonymous_product():
     assert Ap.field_dict == {'x' : En1, 'y' : En2 }
 
     p = Ap(En1.a, En2.c)
+    assert p == Ap.from_values(p.value_dict)
     with pytest.raises(TypeError):
         Ap(En1.a, En1.a)
 
@@ -166,6 +168,7 @@ def test_product():
     assert Pr.field_dict == {'x' : En1, 'y' : En2 }
 
     p = Pr(En1.a, En2.c)
+    assert p == Pr.from_values(p.value_dict)
     with pytest.raises(TypeError):
         Pr(En1.a, En1.a)
 
@@ -324,6 +327,7 @@ def test_tagged_union():
     assert Ta.field_dict == {'x': En1, 'y': En1, 'z': Pr}
 
     t = Ta(x=En1.a)
+    assert t == Ta.from_values(t.value_dict)
     with pytest.raises(TypeError):
         Ta(x=En2.c)
 
