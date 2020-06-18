@@ -215,10 +215,18 @@ def test_product_caching():
     Pr_ = Pr
 
     class Pr(Product):
+        y = En2
+        x = En1
+
+    # Order matters
+    assert Pr_ is not Pr
+
+    class Pr(Product):
         x = En1
         y = En2
 
     assert Pr_ is Pr
+
 
 
 
