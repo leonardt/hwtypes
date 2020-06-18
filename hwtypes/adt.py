@@ -1,8 +1,10 @@
-from .adt_meta import TupleMeta, AnonymousProductMeta, ProductMeta, SumMeta, TaggedUnionMeta, EnumMeta, is_adt_type
 from collections import OrderedDict
 from types import MappingProxyType
 import typing as tp
 import warnings
+
+from .adt_meta import TupleMeta, AnonymousProductMeta, ProductMeta
+from .adt_meta import SumMeta, TaggedUnionMeta, EnumMeta, is_adt_type
 
 __all__  = ['Tuple', 'Product', 'Sum', 'Enum']
 __all__ += ['new_instruction', 'is_adt_type']
@@ -61,6 +63,29 @@ class Tuple(metaclass=TupleMeta):
             d[k] = self[k]
         return MappingProxyType(d)
 
+    @classmethod
+    def from_values(cls, value_dict):
+        if value_dict.keys() != cls.field_dict.keys():
+            raise ValueError('Keys do not match field_dict')
+
+        for k, v in value_dict.items():
+            if not isinstance(v, cls.field_dict[k]):
+                raise TypeError(f'Expected object of type {cls.field_dict[k]}'
+                                f' got {v}')
+
+
+        # So Product can use the type checking logic above
+        return cls._from_kwargs(value_dict)
+
+
+    @classmethod
+    def _from_kwargs(cls, kwargs):
+        args = [None]*len(kwargs)
+        for k, v in kwargs.items():
+            args[k] = v
+
+        return cls(*args)
+
     @property
     def value(self):
         warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
@@ -76,6 +101,10 @@ class AnonymousProduct(Tuple, metaclass=AnonymousProductMeta):
         for k in type(self).field_dict:
             d[k] = getattr(self, k)
         return MappingProxyType(d)
+
+    @classmethod
+    def _from_kwargs(cls, kwargs):
+        return cls(**kwargs)
 
 
 class Product(AnonymousProduct, metaclass=ProductMeta):
@@ -146,10 +175,36 @@ class Sum(metaclass=SumMeta):
                 d[k] = None
         return MappingProxyType(d)
 
+    @classmethod
+    def from_values(cls, value_dict):
+        if value_dict.keys() != cls.field_dict.keys():
+            raise ValueError('Keys do not match field_dict')
+
+        kwargs = {}
+        for k, v in value_dict.items():
+            if v is not None and not isinstance(v, cls.field_dict[k]):
+                raise TypeError(f'Expected object of type {cls.field_dict[k]}'
+                                f' got {v}')
+            elif v is not None:
+                kwargs[k] = v
+
+        if not len(kwargs) == 1:
+            raise ValueError(f'value_dict must have exactly one non None entry')
+
+        # So TaggedUnion can use the type checking logic above
+        return cls._from_kwargs(kwargs)
+
+    @classmethod
+    def _from_kwargs(cls, kwargs):
+        assert len(kwargs) == 1
+        _, v = kwargs.popitem()
+        return cls(v)
+
     @property
     def value(self):
         warnings.warn('DEPRECATION WARNING: ADT.value is deprecated', DeprecationWarning, 2)
         return self._value_
+
 
 class TaggedUnion(Sum, metaclass=TaggedUnionMeta):
     def __init__(self, **kwargs):
@@ -190,6 +245,11 @@ class TaggedUnion(Sum, metaclass=TaggedUnionMeta):
             else:
                 d[k] = None
         return MappingProxyType(d)
+
+    @classmethod
+    def _from_kwargs(cls, kwargs):
+        assert len(kwargs) == 1
+        return cls(**kwargs)
 
 
 class Enum(metaclass=EnumMeta):

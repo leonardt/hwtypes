@@ -46,7 +46,7 @@ def test_visit():
     flattener = FlattenT()
     flattener.visit(Root)
 
-    assert flattener.leaves == [T1, T2, T3, T4, T5, Root.Tag]
+    assert set(flattener.leaves) == {T1, T2, T3, T4, T5, Root.Tag}
 
 def test_visit_i():
     t1 = T1()
@@ -64,5 +64,5 @@ def test_visit_i():
     flattener = FlattenI()
     flattener.visit(root)
 
-    assert flattener.leaves == [t1, t3, 1]
+    assert set(flattener.leaves) == {t1, t3, 1}
 

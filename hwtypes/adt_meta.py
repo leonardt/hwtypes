@@ -44,6 +44,7 @@ RESERVED_NAMES = frozenset({
     'is_bound',
     'is_cached',
     'value_dict',
+    'from_values',
 })
 
 RESERVED_SUNDERS = frozenset({

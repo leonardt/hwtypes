@@ -482,3 +482,8 @@ def test_adt_syntax():
         assert not isinstance(T, AttrSyntax)
         assert not isinstance(T, GetitemSyntax)
 
+@pytest.mark.parametrize("adt", [
+    Su(En1.a), Ta(x=En1.a),
+    Tu(En1.a, En2.c), Pr(En1.a, En2.c), Ap(En1.a, En2.c)])
+def test_from_values(adt):
+    assert adt == type(adt).from_values(adt.value_dict)
