@@ -206,7 +206,9 @@ def determine_return_type(select, t_branch, f_branch):
                 return tb_t
             return PolyVector[tb_t, fb_t, select]
         elif tb_t is fb_t and issubclass(tb_t, BitVectorProtocol):
-            return tb_t._from_bitvector_
+            def from_bv_args(val):
+                return tb_t._from_bitvector_(tb_t._bitvector_t_()(val))
+            return from_bv_args
         else:
             raise TypeError(f'tb_t: {tb_t}, fb_t: {fb_t}')
 
