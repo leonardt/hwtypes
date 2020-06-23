@@ -48,7 +48,6 @@ def test_implicit_inheritance():
     assert not issubclass(Counter, BitVectorProtocolMeta)
 
 
-
 def test_protocol_ite():
     Counter, CounterMeta, Word = gen_counter(BitVector)
     cnt1 = Counter()
@@ -67,6 +66,7 @@ def test_protocol_ite():
 
     assert cnt4.val == cnt1.val
 
+
 def test_protocol_ite_smt():
     Counter, CounterMeta, Word = gen_counter(SMTBitVector)
 
@@ -78,6 +78,7 @@ def test_protocol_ite_smt():
 
     # pysmt == is structural equiv
     assert cnt1.val.value == (init.value + 1)
+    assert cnt1.val.value != init.value
     assert cnt2.val.value == init.value
 
     cnt3 = SMTBit(0).ite(cnt1, cnt2)
