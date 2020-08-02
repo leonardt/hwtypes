@@ -1,6 +1,6 @@
 import pytest
 
-from hwtypes.adt import Product, Sum, Enum, Tuple
+from hwtypes.adt import Product, Sum, Enum, Tuple, TaggedUnion
 from hwtypes.adt_util import rebind_bitvector, rebind_keep_modifiers, rebind_type
 from hwtypes.bit_vector import AbstractBitVector, BitVector, AbstractBit, Bit
 from hwtypes.smt_bit_vector import SMTBit, SMTBitVector
@@ -141,6 +141,18 @@ def test_rebind_bv():
     assert P_unbound.X == AbstractBitVector[16]
     assert P_unbound.S == Sum[AbstractBitVector[4], AbstractBitVector[8]]
     assert P_unbound.T[0] == AbstractBitVector[32]
+
+
+def test_rebind_bv_Tu():
+    class T(TaggedUnion):
+        a=AbstractBit
+        b=AbstractBitVector[5]
+
+    T_bv_rebound = rebind_bitvector(T, AbstractBitVector, BitVector)
+    assert T_bv_rebound.b == BitVector[5]
+    T_bit_rebound = T_bv_rebound.rebind(AbstractBit, Bit, True)
+    assert T_bit_rebound.b == BitVector[5]
+    assert T_bit_rebound.a == Bit
 
 def test_issue_74():
     class A(Product):
