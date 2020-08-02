@@ -107,10 +107,21 @@ class _GetitemSyntax(type): #(metaclass=ABCMeta):
         t._cached_ = True
         return t
 
-
     @abstractmethod
     def _from_idx(cls, idx):
         pass
+
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
+        new_fields = []
+        for T in cls.fields:
+            if T == A or (rebind_sub_types and _issubclass(T,A)):
+                new_fields.append(B)
+            elif rebind_recursive and isinstance(T, BoundMeta):
+                new_fields.append(T.rebind(A, B, rebind_sub_types))
+            else:
+                new_fields.append(T)
+        return cls.unbound_t[new_fields]
+
 
 
 class _AttrSyntax(type): #, metaclass=ABCMeta):
@@ -195,6 +206,21 @@ class _AttrSyntax(type): #, metaclass=ABCMeta):
     @abstractmethod
     def _from_fields(mcs, fields, name, bases, ns, **kwargs):
         pass
+
+    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
+        new_fields = OrderedDict()
+        for field, T in cls.field_dict.items():
+            if T == A or (rebind_sub_types and _issubclass(T,A)):
+                new_fields[field] = B
+            elif rebind_recursive and isinstance(T, BoundMeta):
+                new_fields[field] = T.rebind(A, B, rebind_sub_types)
+            else:
+                new_fields[field] = T
+
+        if new_fields != cls.field_dict:
+            return cls.unbound_t.from_fields(cls.__name__, new_fields, cache=cls.is_cached)
+        else:
+            return cls
 
 
 class BoundMeta(_GetitemSyntax): #, metaclass=ABCMeta):
@@ -316,17 +342,6 @@ class BoundMeta(_GetitemSyntax): #, metaclass=ABCMeta):
 
     def __repr__(cls):
         return f"{cls.__name__}"
-
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
-        new_fields = []
-        for T in cls.fields:
-            if T == A or (rebind_sub_types and _issubclass(T,A)):
-                new_fields.append(B)
-            elif rebind_recursive and isinstance(T, BoundMeta):
-                new_fields.append(T.rebind(A, B, rebind_sub_types))
-            else:
-                new_fields.append(T)
-        return cls.unbound_t[new_fields]
 
     @property
     def is_cached(cls):
@@ -479,22 +494,6 @@ class ProductMeta(_AttrSyntax, AnonymousProductMeta):
                 return super().__getitem__(idx)
         else:
             raise TypeError("Cannot bind product types with getitem")
-
-
-    def rebind(cls, A: type, B: type, rebind_sub_types: bool = False, rebind_recursive: bool = True):
-        new_fields = OrderedDict()
-        for field, T in cls.field_dict.items():
-            if T == A or (rebind_sub_types and _issubclass(T,A)):
-                new_fields[field] = B
-            elif rebind_recursive and isinstance(T, BoundMeta):
-                new_fields[field] = T.rebind(A, B, rebind_sub_types)
-            else:
-                new_fields[field] = T
-
-        if new_fields != cls.field_dict:
-            return cls.unbound_t.from_fields(cls.__name__, new_fields, cache=cls.is_cached)
-        else:
-            return cls
 
 
 class SumMeta(BoundMeta):
