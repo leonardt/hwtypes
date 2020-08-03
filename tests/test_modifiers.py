@@ -5,7 +5,7 @@ import hwtypes.modifiers as modifiers
 from hwtypes.modifiers import make_modifier, is_modified, is_modifier, unwrap_modifier, wrap_modifier
 from hwtypes.modifiers import get_modifier, get_unmodified
 from hwtypes.modifiers import strip_modifiers, push_modifiers
-from hwtypes.adt import Tuple, Product, Sum, Enum
+from hwtypes.adt import Tuple, Product, Sum, Enum, TaggedUnion
 
 modifiers._DEBUG = True
 
@@ -109,6 +109,18 @@ def test_strip():
     assert A_stripped.b is Sum[Bit, BV[6], E]
     assert A_stripped.c is E
     assert A_stripped.d is Tuple[BV[3], Bit]
+
+def test_ta_strip():
+    class Ta(TaggedUnion, cache=True):
+        a = int
+        b = int
+        c = str
+    class B(Ta): pass
+    class C(B): pass
+    M0 = make_modifier("M0")
+
+    C_stripped = strip_modifiers(M0(C))
+    assert C == C_stripped
 
 def test_push():
     M0 = make_modifier("M0")

@@ -137,7 +137,9 @@ def wrap_modifier(T, mods):
 def strip_modifiers(adt_t):
     #remove modifiers from this level
     adt_t, _ = unwrap_modifier(adt_t)
-    if isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
+    if not hasattr(adt_t, "unbound_t"):
+        return adt_t
+    elif isinstance(adt_t, AttrSyntax) and not isinstance(adt_t, EnumMeta):
         new_fields = {n:strip_modifiers(sub_adt_t) for n, sub_adt_t in adt_t.field_dict.items()}
         return adt_t.unbound_t.from_fields(adt_t.__name__, new_fields)
     elif isinstance(adt_t, GetitemSyntax):
