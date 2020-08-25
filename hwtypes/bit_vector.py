@@ -112,7 +112,7 @@ class Bit(AbstractBit):
     def __hash__(self) -> int:
         return hash(self._value)
 
-    @staticmethod
+    @classmethod
     def random(cls) -> AbstractBit:
         return cls(random.getrandbits(1))
 
