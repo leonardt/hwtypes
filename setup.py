@@ -25,7 +25,7 @@ setup(
     url='https://github.com/leonardt/hwtypes',
     author='Leonard Truong',
     author_email='lenny@cs.stanford.edu',
-    version='1.0.11',
+    version='1.4.3',
     description='Python implementations of fixed size hardware types (Bit, '
                 'BitVector, UInt, SInt, ...) based on the SMT-LIB2 semantics',
     scripts=[],

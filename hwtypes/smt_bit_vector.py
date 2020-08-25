@@ -1,7 +1,8 @@
 import typing as tp
 import itertools as it
 import functools as ft
-from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily
+from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily, InconsistentSizeError
+from .bit_vector_util import build_ite
 
 from abc import abstractmethod
 
@@ -9,6 +10,8 @@ import pysmt
 import pysmt.shortcuts as smt
 from pysmt.typing import  BVType, BOOL
 
+
+from collections import defaultdict
 import re
 import warnings
 import weakref
@@ -17,16 +20,13 @@ import random
 
 __ALL__ = ['SMTBitVector', 'SMTNumVector', 'SMTSIntVector', 'SMTUIntVector']
 
-_var_counter = it.count()
+_var_counters = defaultdict(it.count)
 _name_table = weakref.WeakValueDictionary()
-_free_names = []
 
-def _gen_name():
-    if _free_names:
-        return _free_names.pop()
-    name = f'V_{next(_var_counter)}'
+def _gen_name(prefix='V'):
+    name = f'{prefix}_{next(_var_counters[prefix])}'
     while name in _name_table:
-        name = f'V_{next(_var_counter)}'
+        name = f'{prefix}_{next(_var_counters[prefix])}'
     return name
 
 _name_re = re.compile(r'V_\d+')
@@ -48,7 +48,11 @@ def bit_cast(fn):
         if isinstance(other, SMTBit):
             return fn(self, other)
         else:
-            return fn(self, SMTBit(other))
+            try:
+                other = SMTBit(other)
+            except TypeError:
+                return NotImplemented
+            return fn(self, other)
     return wrapped
 
 class SMTBit(AbstractBit):
@@ -56,9 +60,11 @@ class SMTBit(AbstractBit):
     def get_family() -> TypeFamily:
         return _Family_
 
-    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC):
-        if name is not AUTOMATIC and value is not SMYBOLIC:
+    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC, prefix=AUTOMATIC):
+        if (name is not AUTOMATIC or prefix is not AUTOMATIC) and value is not SMYBOLIC:
             raise TypeError('Can only name symbolic variables')
+        elif name is not AUTOMATIC and prefix is not AUTOMATIC:
+            raise ValueError('Can only set either name or prefix not both')
         elif name is not AUTOMATIC:
             if not isinstance(name, str):
                 raise TypeError('Name must be string')
@@ -66,6 +72,9 @@ class SMTBit(AbstractBit):
                 raise ValueError(f'Name {name} already in use')
             elif _name_re.fullmatch(name):
                 warnings.warn('Name looks like an auto generated name, this might break things')
+            _name_table[name] = self
+        elif prefix is not AUTOMATIC:
+            name = _gen_name(prefix)
             _name_table[name] = self
         elif name is AUTOMATIC and value is SMYBOLIC:
             name = _gen_name()
@@ -98,9 +107,10 @@ class SMTBit(AbstractBit):
 
     def __repr__(self):
         if self._name is not AUTOMATIC:
-            return self._name
+            return f'{type(self)}({self._name})'
         else:
-            return repr(self._value)
+            return f'{type(self)}({self._value})'
+
     @property
     def value(self):
         return self._value
@@ -129,38 +139,25 @@ class SMTBit(AbstractBit):
         return type(self)(smt.Xor(self.value, other.value))
 
     def ite(self, t_branch, f_branch):
-        tb_t = type(t_branch)
-        fb_t = type(f_branch)
-        BV_t = self.get_family().BitVector
-        if isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
-            if tb_t is not fb_t:
-                raise TypeError('Both branches must have the same type')
-            T = tb_t
-        elif isinstance(t_branch, BV_t):
-            f_branch = tb_t(f_branch)
-            T = tb_t
-        elif isinstance(f_branch, BV_t):
-            t_branch = fb_t(t_branch)
-            T = fb_t
-        else:
-            t_branch = BV_t(t_branch)
-            f_branch = BV_t(f_branch)
-            ext = t_branch.size - f_branch.size
-            if ext > 0:
-                f_branch = f_branch.zext(ext)
-            elif ext < 0:
-                t_branch = t_branch.zext(-ext)
-
-            T = type(t_branch)
+        def _ite(select, t_branch, f_branch):
+            return smt.Ite(select.value, t_branch.value, f_branch.value)
 
 
-        return T(smt.Ite(self.value, t_branch.value, f_branch.value))
+        return build_ite(_ite, self, t_branch, f_branch)
+
+    def substitute(self, *subs : tp.List[tp.Tuple['SMTBit', 'SMTBit']]):
+        return SMTBit(
+            self.value.substitute(
+                {from_.value:to.value for from_, to in subs}
+            )
+        )
+
 
 def _coerce(T : tp.Type['SMTBitVector'], val : tp.Any) -> 'SMTBitVector':
     if not isinstance(val, SMTBitVector):
         return T(val)
     elif val.size != T.size:
-        raise TypeError('Inconsistent size')
+        raise InconsistentSizeError('Inconsistent size')
     else:
         return val
 
@@ -183,9 +180,11 @@ class SMTBitVector(AbstractBitVector):
     def get_family() -> TypeFamily:
         return _Family_
 
-    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC):
-        if name is not AUTOMATIC and value is not SMYBOLIC:
+    def __init__(self, value=SMYBOLIC, *, name=AUTOMATIC, prefix=AUTOMATIC):
+        if (name is not AUTOMATIC or prefix is not AUTOMATIC) and value is not SMYBOLIC:
             raise TypeError('Can only name symbolic variables')
+        elif name is not AUTOMATIC and prefix is not AUTOMATIC:
+            raise ValueError('Can only set either name or prefix not both')
         elif name is not AUTOMATIC:
             if not isinstance(name, str):
                 raise TypeError('Name must be string')
@@ -194,9 +193,13 @@ class SMTBitVector(AbstractBitVector):
             elif _name_re.fullmatch(name):
                 warnings.warn('Name looks like an auto generated name, this might break things')
             _name_table[name] = self
+        elif prefix is not AUTOMATIC:
+            name = _gen_name(prefix)
+            _name_table[name] = self
         elif name is AUTOMATIC and value is SMYBOLIC:
             name = _gen_name()
             _name_table[name] = self
+
         self._name = name
 
         T = BVType(self.size)
@@ -231,7 +234,7 @@ class SMTBitVector(AbstractBitVector):
                 raise ValueError('Iterable is not the correct size')
             cls = type(self)
             B1 = cls.unsized_t[1]
-            self._value = ft.reduce(cls.concat, map(B1, reversed(value))).value
+            self._value = ft.reduce(lambda acc, elem : acc.concat(elem), map(B1, value)).value
         elif isinstance(value, int):
             self._value =  smt.BV(value % (1 << self.size), self.size)
 
@@ -259,9 +262,9 @@ class SMTBitVector(AbstractBitVector):
 
     def __repr__(self):
         if self._name is not AUTOMATIC:
-            return self._name
+            return f'{type(self)}({self._name})'
         else:
-            return repr(self._value)
+            return f'{type(self)}({self._value})'
 
     def __getitem__(self, index):
         size = self.size
@@ -320,9 +323,11 @@ class SMTBitVector(AbstractBitVector):
     def __len__(self):
         return self.size
 
-    @classmethod
-    def concat(cls, x, y):
-        return cls.unsized_t[x.size + y.size](smt.BVConcat(x.value, y.value))
+    def concat(self, other):
+        T = type(self).unsized_t
+        if not isinstance(other, T):
+            raise TypeError(f'value must of type {T} not {type(other)}')
+        return T[self.size + other.size](smt.BVConcat(other.value, self.value))
 
     def bvnot(self):
         return type(self)(smt.BVNot(self.value))
@@ -467,28 +472,139 @@ class SMTBitVector(AbstractBitVector):
     def bvsrem(self, other):
         return type(self)(smt.BVSRem(self.value, other.value))
 
-    __invert__ = bvnot
-    __and__ = bvand
-    __or__ = bvor
-    __xor__ = bvxor
+    def __invert__(self): return self.bvnot()
 
-    __lshift__ = bvshl
-    __rshift__ = bvlshr
+    def __and__(self, other):
+        try:
+            return self.bvand(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
-    __neg__ = bvneg
-    __add__ = bvadd
-    __sub__ = bvsub
-    __mul__ = bvmul
-    __floordiv__ = bvudiv
-    __mod__ = bvurem
+    def __or__(self, other):
+        try:
+            return self.bvor(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
-    __eq__ = bveq
-    __ne__ = bvne
-    __ge__ = bvuge
-    __gt__ = bvugt
-    __le__ = bvule
-    __lt__ = bvult
+    def __xor__(self, other):
+        try:
+            return self.bvxor(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
+
+    def __lshift__(self, other):
+        try:
+            return self.bvshl(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __rshift__(self, other):
+        try:
+            return self.bvlshr(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __neg__(self): return self.bvneg()
+
+    def __add__(self, other):
+        try:
+            return self.bvadd(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __sub__(self, other):
+        try:
+            return self.bvsub(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __mul__(self, other):
+        try:
+            return self.bvmul(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __floordiv__(self, other):
+        try:
+            return self.bvudiv(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __mod__(self, other):
+        try:
+            return self.bvurem(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+
+    def __eq__(self, other):
+        try:
+            return self.bveq(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __ne__(self, other):
+        try:
+            return self.bvne(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __ge__(self, other):
+        try:
+            return self.bvuge(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __gt__(self, other):
+        try:
+            return self.bvugt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __le__(self, other):
+        try:
+            return self.bvule(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __lt__(self, other):
+        try:
+            return self.bvult(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError as e:
+            return NotImplemented
 
 
     @int_cast
@@ -510,6 +626,14 @@ class SMTBitVector(AbstractBitVector):
             raise ValueError()
         return type(self).unsized_t[self.size + ext](smt.BVZExt(self.value, ext))
 
+    def substitute(self, *subs : tp.List[tp.Tuple["SBV", "SBV"]]):
+        return SMTBitVector[self.size](
+            self.value.substitute(
+                {from_.value:to.value for from_, to in subs}
+            )
+        )
+
+
 #    def bits(self):
 #        return [(self >> i) & 1 for i in range(self.size)]
 #
@@ -529,30 +653,69 @@ class SMTBitVector(AbstractBitVector):
 class SMTNumVector(SMTBitVector):
     pass
 
-
 class SMTUIntVector(SMTNumVector):
     pass
 
 class SMTSIntVector(SMTNumVector):
     def __rshift__(self, other):
-        return self.bvashr(other)
+        try:
+            return self.bvashr(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __floordiv__(self, other):
-        return self.bvsdiv(other)
+        try:
+            return self.bvsdiv(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __mod__(self, other):
-        return self.bvsrem(other)
+        try:
+            return self.bvsrem(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __ge__(self, other):
-        return self.bvsge(other)
+        try:
+            return self.bvsge(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __gt__(self, other):
-        return self.bvsgt(other)
+        try:
+            return self.bvsgt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __lt__(self, other):
-        return self.bvslt(other)
+        try:
+            return self.bvslt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError as e:
+            return NotImplemented
 
     def __le__(self, other):
-        return self.bvsle(other)
+        try:
+            return self.bvsle(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def ext(self, other):
+        return self.sext(other)
+
+
 
 _Family_ = TypeFamily(SMTBit, SMTBitVector, SMTUIntVector, SMTSIntVector)

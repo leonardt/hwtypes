@@ -57,3 +57,5 @@ def test_operator_bit2(op, reference, v1, v2):
     assert reference(v1, v2) == bool(op(Bit(v1), Bit(v2)))
 
 
+def test_random():
+    assert Bit.random() in [0, 1]

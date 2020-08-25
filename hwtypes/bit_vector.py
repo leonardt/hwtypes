@@ -1,5 +1,6 @@
 import typing as tp
-from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily
+from .bit_vector_abc import AbstractBitVector, AbstractBit, TypeFamily, InconsistentSizeError
+from .bit_vector_util import build_ite
 from .compatibility import IntegerTypes, StringTypes
 
 import functools
@@ -28,7 +29,11 @@ def bit_cast(fn : tp.Callable[['Bit', 'Bit'], 'Bit']) -> tp.Callable[['Bit', tp.
         if isinstance(other, Bit):
             return fn(self, other)
         else:
-            return fn(self, Bit(other))
+            try:
+                other = Bit(other)
+            except TypeError:
+                return NotImplemented
+            return fn(self, other)
     return wrapped
 
 
@@ -75,32 +80,26 @@ class Bit(AbstractBit):
         return type(self)(self._value ^ other._value)
 
     def ite(self, t_branch, f_branch):
-        tb_t = type(t_branch)
-        fb_t = type(f_branch)
-        BV_t = self.get_family().BitVector
-        if isinstance(t_branch, BV_t) and isinstance(f_branch, BV_t):
-            if tb_t is not fb_t:
-                raise TypeError('Both branches must have the same type')
-            T = tb_t
-        elif isinstance(t_branch, BV_t):
-            f_branch = tb_t(f_branch)
-            T = tb_t
-        elif isinstance(f_branch, BV_t):
-            t_branch = fb_t(t_branch)
-            T = fb_t
-        else:
-            t_branch = BV_t(t_branch)
-            f_branch = BV_t(f_branch)
-            ext = t_branch.size - f_branch.size
-            if ext > 0:
-                f_branch = f_branch.zext(ext)
-            elif ext < 0:
-                t_branch = t_branch.zext(-ext)
+        '''
+        typing works as follows:
+            if t_branch and f_branch are both Bit[Vector] types
+            from the same family, and type(t_branch) is type(f_branch),
+            then return type is t_branch.
 
-            T = type(t_branch)
+            elif t_branch and f_branch are both Bit[Vector] types
+            from the same family, then return type is a polymorphic
+            type.
 
+            elif t_brand and f_branch are tuples of the
+            same length, then these rules are applied recursively
 
-        return t_branch if self else f_branch
+            else there is an error
+
+        '''
+        def _ite(select, t_branch, f_branch):
+            return t_branch if select else f_branch
+
+        return build_ite(_ite, self, t_branch, f_branch)
 
     def __bool__(self) -> bool:
         return self._value
@@ -109,16 +108,20 @@ class Bit(AbstractBit):
         return int(self._value)
 
     def __repr__(self) -> str:
-        return 'Bit({})'.format(self._value)
+        return f'{type(self).__name__}({self._value})'
 
     def __hash__(self) -> int:
         return hash(self._value)
+
+    @classmethod
+    def random(cls) -> AbstractBit:
+        return cls(random.getrandbits(1))
 
 def _coerce(T : tp.Type['BitVector'], val : tp.Any) -> 'BitVector':
     if not isinstance(val, BitVector):
         return T(val)
     elif val.size != T.size:
-        raise TypeError('Inconsistent size')
+        raise InconsistentSizeError('Inconsistent size')
     else:
         return val
 
@@ -173,7 +176,11 @@ class BitVector(AbstractBitVector):
         return str(int(self))
 
     def __repr__(self):
-        return "BitVector[{size}]({value})".format(value=self._value, size=self.size)
+        return f'{type(self).__name__}({self._value})'
+
+    @property
+    def value(self):
+        return self._value
 
     def __setitem__(self, index, value):
         if isinstance(index, slice):
@@ -211,10 +218,11 @@ class BitVector(AbstractBitVector):
     def __len__(self):
         return self.size
 
-    # Note: In concat(x, y), the MSB of the result is the MSB of x.
-    @classmethod
-    def concat(cls, x, y):
-        return cls.unsized_t[x.size+y.size](y.bits() + x.bits())
+    def concat(self, other):
+        T = type(self).unsized_t
+        if not isinstance(other, T):
+            raise TypeError(f'value must of type {T}')
+        return T[self.size+other.size](self.value | (other.value << self.size))
 
     def bvnot(self):
         return type(self)(~self.as_uint())
@@ -245,13 +253,13 @@ class BitVector(AbstractBitVector):
 
     @bv_cast
     def bvrol(self, other):
-        other = other.as_uint() % len(self)
-        return self.concat( self[other:], self[0:other] )
+        other = (len(self) - other.as_uint()) % len(self)
+        return self[other:].concat(self[:other])
 
     @bv_cast
     def bvror(self, other):
-        other = (len(self) - other.as_uint()) % len(self)
-        return self.concat( self[other:], self[0:other] )
+        other = other.as_uint() % len(self)
+        return self[other:].concat(self[:other])
 
     @bv_cast
     def bvcomp(self, other):
@@ -336,34 +344,145 @@ class BitVector(AbstractBitVector):
 
     # bvsmod
     def __invert__(self): return self.bvnot()
-    def __and__(self, other): return self.bvand(other)
-    def __or__(self, other): return self.bvor(other)
-    def __xor__(self, other): return self.bvxor(other)
 
-    def __lshift__(self, other): return self.bvshl(other)
-    def __rshift__(self, other): return self.bvlshr(other)
+    def __and__(self, other):
+        try:
+            return self.bvand(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __or__(self, other):
+        try:
+            return self.bvor(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __xor__(self, other):
+        try:
+            return self.bvxor(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+
+    def __lshift__(self, other):
+        try:
+            return self.bvshl(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __rshift__(self, other):
+        try:
+            return self.bvlshr(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __neg__(self): return self.bvneg()
-    def __add__(self, other): return self.bvadd(other)
-    def __sub__(self, other): return self.bvsub(other)
-    def __mul__(self, other): return self.bvmul(other)
-    def __floordiv__(self, other): return self.bvudiv(other)
-    def __mod__(self, other): return self.bvurem(other)
 
-    def __eq__(self, other): return self.bveq(other)
-    def __ne__(self, other): return self.bvne(other)
-    def __ge__(self, other): return self.bvuge(other)
-    def __gt__(self, other): return self.bvugt(other)
-    def __le__(self, other): return self.bvule(other)
-    def __lt__(self, other): return self.bvult(other)
+    def __add__(self, other):
+        try:
+            return self.bvadd(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
+    def __sub__(self, other):
+        try:
+            return self.bvsub(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __mul__(self, other):
+        try:
+            return self.bvmul(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __floordiv__(self, other):
+        try:
+            return self.bvudiv(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __mod__(self, other):
+        try:
+            return self.bvurem(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+
+    def __eq__(self, other):
+        try:
+            return self.bveq(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __ne__(self, other):
+        try:
+            return self.bvne(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __ge__(self, other):
+        try:
+            return self.bvuge(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __gt__(self, other):
+        try:
+            return self.bvugt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __le__(self, other):
+        try:
+            return self.bvule(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
+
+    def __lt__(self, other):
+        try:
+            return self.bvult(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError as e:
+            return NotImplemented
 
     def as_uint(self):
         return self._value
 
     def as_sint(self):
         value = self._value
-        if (value & (1 << (self.size - 1))):
+        if self[-1]:
             value = value - (1 << self.size)
         return value
 
@@ -400,10 +519,10 @@ class BitVector(AbstractBitVector):
             raise ValueError()
 
         T = type(self).unsized_t
-        return T.concat(T[1](self[-1]).repeat(ext), self)
+        return self.concat(T[1](self[-1]).repeat(ext))
 
     def ext(self, ext):
-        return self.zext(other)
+        return self.zext(ext)
 
     def zext(self, ext):
         ext = int(ext)
@@ -411,68 +530,92 @@ class BitVector(AbstractBitVector):
             raise ValueError()
 
         T = type(self).unsized_t
-        return T.concat(T[ext](0), self)
+        return self.concat(T[ext](0))
 
     @staticmethod
     def random(width):
         return BitVector[width](random.randint(0, (1 << width) - 1))
 
 
-
-
 class NumVector(BitVector):
     __hash__ = BitVector.__hash__
 
+
 class UIntVector(NumVector):
     __hash__ = NumVector.__hash__
-
-    def __repr__(self):
-        return "UIntVector[{size}]({value})".format(value=self._value, size=self.size)
 
     @staticmethod
     def random(width):
         return UIntVector[width](random.randint(0, (1 << width) - 1))
 
 
-
 class SIntVector(NumVector):
     __hash__ = NumVector.__hash__
-
-    def __repr__(self):
-        return "SIntVector[{size}]({value})".format(value=self._value, size=self.size)
 
     def __int__(self):
         return self.as_sint()
 
     def __rshift__(self, other):
-        return self.bvashr(other)
+        try:
+            return self.bvashr(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __floordiv__(self, other):
-        return self.bvsdiv(other)
+        try:
+            return self.bvsdiv(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __mod__(self, other):
-        return self.bvsrem(other)
+        try:
+            return self.bvsrem(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __ge__(self, other):
-        return self.bvsge(other)
+        try:
+            return self.bvsge(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __gt__(self, other):
-        return self.bvsgt(other)
+        try:
+            return self.bvsgt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __lt__(self, other):
-
-        return self.bvslt(other)
+        try:
+            return self.bvslt(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     def __le__(self, other):
-        return self.bvsle(other)
-
+        try:
+            return self.bvsle(other)
+        except InconsistentSizeError as e:
+            raise e from None
+        except TypeError:
+            return NotImplemented
 
     @staticmethod
     def random(width):
         w = width - 1
         return SIntVector[width](random.randint(-(1 << w), (1 << w) - 1))
 
-    @bv_cast
     def ext(self, other):
         return self.sext(other)
 
@@ -480,6 +623,6 @@ def overflow(a, b, res):
     msb_a = a[-1]
     msb_b = b[-1]
     N = res[-1]
-    return (msb_a & msb_b & ~N) or (~msb_a & ~msb_b & N)
+    return (msb_a & msb_b & ~N) | (~msb_a & ~msb_b & N)
 
 _Family_ = TypeFamily(Bit, BitVector, UIntVector, SIntVector)

@@ -18,3 +18,8 @@ try:
     from .z3_bit_vector import *
 except ImportError:
     pass
+
+try:
+    from .smt_fp_vector import *
+except ImportError:
+    pass

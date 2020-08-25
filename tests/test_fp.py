@@ -125,7 +125,7 @@ def _c_type_vector(T):
 
     return vector
 
-NTESTS = 100
+NTESTS = 128
 
 @pytest.mark.parametrize("mode", [
     RoundingMode.RNE,
@@ -246,6 +246,37 @@ def test_reinterpret_bv(FT):
             #mantissa should be non 0
             assert bv1[:ms] != 0
             assert bv2[:ms] != 0
+
+def test_reinterpret_bv_corner():
+    for _ in range(NTESTS):
+        FT = FPVector[random.randint(3, 16),
+                      random.randint(2, 64),
+                      random.choice(list(RoundingMode)),
+                      True]
+        bv_pinf = BitVector[FT.mantissa_size](0).concat(BitVector[FT.exponent_size](-1)).concat(BitVector[1](0))
+        bv_ninf = BitVector[FT.mantissa_size](0).concat(BitVector[FT.exponent_size](-1)).concat(BitVector[1](1))
+        pinf = FT.reinterpret_from_bv(bv_pinf)
+        ninf = FT.reinterpret_from_bv(bv_ninf)
+        assert pinf.reinterpret_as_bv() == bv_pinf
+        assert ninf.reinterpret_as_bv() == bv_ninf
+        assert pinf.fp_is_positive()
+        assert pinf.fp_is_infinite()
+        assert ninf.fp_is_negative()
+        assert ninf.fp_is_infinite()
+
+        bv_pz = BitVector[FT.size](0)
+        bv_nz = BitVector[FT.size-1](0).concat(BitVector[1](1))
+        pz = FT.reinterpret_from_bv(bv_pz)
+        nz = FT.reinterpret_from_bv(bv_nz)
+        assert pz.reinterpret_as_bv() == bv_pz
+        assert nz.reinterpret_as_bv() == bv_nz
+        assert pz.fp_is_zero()
+        assert nz.fp_is_zero()
+
+        bv_nan = BitVector[FT.mantissa_size](1).concat(BitVector[FT.exponent_size](-1)).concat(BitVector[1](0))
+        nan = FT.reinterpret_from_bv(bv_nan)
+        assert nan.reinterpret_as_bv() == bv_nan
+        assert nan.fp_is_NaN()
 
 @pytest.mark.parametrize("CT, FT", [
     (_c_type_vector(ctypes.c_float), FPVector[8, 23, RoundingMode.RNE, True]),

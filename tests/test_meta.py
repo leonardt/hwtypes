@@ -67,10 +67,6 @@ def test_size():
     with pytest.raises(TypeError):
         C[6]
 
-    x = BV(5)
-    assert x.size == 3
-    assert type(x).size == 3
-
 def test_instance():
     x = BV[8](0)
     assert isinstance(x, ABV)

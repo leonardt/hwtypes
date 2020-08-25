@@ -88,7 +88,7 @@ def test_eq():
 
 
 def test_setitem():
-  bv = BitVector(5)
+  bv = BitVector[3](5)
   assert bv.as_uint() ==5
   bv[0] = 0
   assert repr(bv) == 'BitVector[3](4)'
@@ -96,3 +96,25 @@ def test_setitem():
   assert repr(bv) == 'BitVector[3](6)'
   bv[2] = 0
   assert repr(bv) == 'BitVector[3](2)'
+
+@pytest.mark.parametrize("val", [
+        BitVector.random(8),
+        BitVector.random(8).as_sint(),
+        BitVector.random(8).as_uint(),
+        [0,1,1,0],
+    ])
+def test_deprecated(val):
+    with pytest.warns(DeprecationWarning):
+        BitVector(val)
+
+@pytest.mark.parametrize("val", [
+        BitVector.random(4),
+        BitVector.random(4).as_sint(),
+        BitVector.random(4).as_uint(),
+        [0,1,1,0],
+    ])
+def test_old_style(val):
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(TypeError):
+            BitVector(val, 4)
+

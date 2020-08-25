@@ -5,30 +5,30 @@ import functools as ft
 import weakref
 import warnings
 
+from .util import _issubclass
 
 TypeFamily = namedtuple('TypeFamily', ['Bit', 'BitVector', 'Unsigned', 'Signed'])
+
+# Should be raised when bv[k].op(bv[j]) and j != k
+
+class InconsistentSizeError(TypeError): pass
 
 #I want to be able differentiate an old style call
 #BitVector(val, None) from BitVector(val)
 _MISSING = object()
-class AbstractBitVectorMeta(ABCMeta):
+class AbstractBitVectorMeta(type): #:(ABCMeta):
     # BitVectorType, size :  BitVectorType[size]
     _class_cache = weakref.WeakValueDictionary()
 
-    # BitVectorType : UnsizedBitVectorType, size
-    _class_info  = weakref.WeakKeyDictionary()
-
-    def __call__(cls, value=_MISSING, size=_MISSING, *args, **kwargs):
-        if cls.is_sized and size is not _MISSING:
-            raise TypeError('Cannot use old style construction on sized types')
-        elif cls.is_sized:
+    def __call__(cls, value=_MISSING, *args, **kwargs):
+        if cls.is_sized:
             if value is _MISSING:
                 return super().__call__(*args, **kwargs)
             else:
                 return super().__call__(value, *args, **kwargs)
-        elif size is _MISSING or size is None:
-            if size is None:
-                warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
+        else:
+            warnings.warn('DEPRECATION WARNING: Use of implicitly sized '
+                          'BitVectors is deprecated', DeprecationWarning)
 
             if value is _MISSING:
                 raise TypeError('Cannot construct {} without a value'.format(cls, value))
@@ -44,14 +44,15 @@ class AbstractBitVectorMeta(ABCMeta):
                 size = max(int(value).bit_length(), 1)
             else:
                 raise TypeError('Cannot construct {} from {}'.format(cls, value))
-        else:
-            warnings.warn('DEPRECATION WARNING: Use of BitVectorT(value, size) is deprecated')
 
-        return type(cls).__call__(cls[size], value)
+        return type(cls).__call__(cls[size], value, *args, **kwargs)
 
 
-    def __new__(mcs, name, bases, namespace, **kwargs):
-        size = None
+    def __new__(mcs, name, bases, namespace, info=(None, None), **kwargs):
+        if '_info_' in namespace:
+            raise TypeError('class attribute _info_ is reversed by the type machinery')
+
+        size = info[1]
         for base in bases:
             if getattr(base, 'is_sized', False):
                 if size is None:
@@ -59,11 +60,14 @@ class AbstractBitVectorMeta(ABCMeta):
                 elif size != base.size:
                     raise TypeError("Can't inherit from multiple different sizes")
 
+        namespace['_info_'] = info[0], size
         t = super().__new__(mcs, name, bases, namespace, **kwargs)
         if size is None:
-            mcs._class_info[t] = t, size
-        else:
-            mcs._class_info[t] = None, size
+            #class is unsized so t.unsized_t -> t
+            t._info_ = t, size
+        elif info[0] is None:
+            #class inherited from sized types so there is no unsized_t
+            t._info_ = None, size
 
         return t
 
@@ -87,15 +91,14 @@ class AbstractBitVectorMeta(ABCMeta):
         bases.extend(b[idx] for b in cls.__bases__ if isinstance(b, mcs))
         bases = tuple(bases)
         class_name = '{}[{}]'.format(cls.__name__, idx)
-        t = mcs(class_name, bases, {})
+        t = mcs(class_name, bases, {}, info=(cls,idx))
         t.__module__ = cls.__module__
         mcs._class_cache[cls, idx] = t
-        mcs._class_info[t] = cls, idx
         return t
 
     @property
     def unsized_t(cls) -> 'AbstractBitVectorMeta':
-        t = type(cls)._class_info[cls][0]
+        t = cls._info_[0]
         if t is not None:
             return t
         else:
@@ -103,11 +106,18 @@ class AbstractBitVectorMeta(ABCMeta):
 
     @property
     def size(cls) -> int:
-        return type(cls)._class_info[cls][1]
+        return cls._info_[1]
 
     @property
     def is_sized(cls) -> bool:
-        return type(cls)._class_info[cls][1] is not None
+        return cls.size is not None
+
+    def __len__(cls):
+        if cls.is_sized:
+            return cls.size
+        else:
+            raise AttributeError('unsized type has no len')
+
 
 class AbstractBit(metaclass=ABCMeta):
     @staticmethod
@@ -167,10 +177,8 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     def __len__(self) -> int:
         pass
 
-    #could still be staticmethod but I think thats annoying
-    @classmethod
     @abstractmethod
-    def concat(cls, x, y) -> 'AbstractBitVector':
+    def concat(self, other) -> 'AbstractBitVector':
         pass
 
     @abstractmethod
@@ -311,5 +319,6 @@ class AbstractBitVector(metaclass=AbstractBitVectorMeta):
     def zext(self, other) -> 'AbstractBitVector':
         pass
 
+BitVectorMeta = AbstractBitVectorMeta
 
 _Family_ = TypeFamily(AbstractBit, AbstractBitVector, None, None)
