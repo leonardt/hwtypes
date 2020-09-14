@@ -118,3 +118,12 @@ def test_old_style(val):
         with pytest.raises(TypeError):
             BitVector(val, 4)
 
+
+@pytest.mark.parametrize("op, reference", [
+    (operator.floordiv, lambda x, y: x // y if y != 0 else -1),
+    (operator.mod,      lambda x, y: x % y if y != 0 else x),
+])
+def test_operator_by_0(op, reference):
+    I0, I1 = BitVector.random(5), 0
+    expected = unsigned(reference(int(I0), int(I1)), 5)
+    assert expected == int(op(I0, I1))

@@ -340,6 +340,8 @@ class BitVector(AbstractBitVector):
     @bv_cast
     def bvsrem(self, other):
         other = other.as_sint()
+        if other == 0:
+            return self
         return type(self)(self.as_sint() % other)
 
     # bvsmod

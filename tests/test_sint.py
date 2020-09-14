@@ -71,3 +71,13 @@ def test_signed():
     a = SIntVector[4](-4)
     assert a._value != 4, "Stored as unsigned two's complement value"
     assert int(a) == -4, "int returns the native signed int representation"
+
+
+@pytest.mark.parametrize("op, reference", [
+    (operator.floordiv, lambda x, y: x // y if y != 0 else -1),
+    (operator.mod,      lambda x, y: x % y if y != 0 else x),
+])
+def test_operator_by_0(op, reference):
+    I0, I1 = SIntVector.random(5), 0
+    expected = signed(reference(int(I0), int(I1)), 5)
+    assert expected == int(op(I0, I1))
