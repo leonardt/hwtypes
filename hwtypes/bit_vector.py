@@ -140,7 +140,7 @@ class BitVector(AbstractBitVector):
     def __init__(self, value=0):
         if isinstance(value, BitVector):
             if value.size > self.size:
-                warnings.warn('Truncating value from {} to {}'.format(type(value), type(self)))
+                warnings.warn('Truncating value from {} to {}'.format(type(value), type(self)), stacklevel=3)
             value = value._value
         elif isinstance(value, Bit):
             value = int(bool(value))
@@ -151,12 +151,12 @@ class BitVector(AbstractBitVector):
                 #warnings.warn('Truncating value {} to {}'.format(value, type(self)))
         elif isinstance(value, tp.Sequence):
             if len(value) > self.size:
-                warnings.warn('Truncating value {} to {}'.format(value, type(self)))
+                warnings.warn('Truncating value {} to {}'.format(value, type(self)), stacklevel=3)
             value = seq2int(value)
         elif hasattr(value, '__int__'):
             value = int(value)
             if value.bit_length() > self.size:
-                warnings.warn('Truncating value {} to {}'.format(value, type(self)))
+                warnings.warn('Truncating value {} to {}'.format(value, type(self)), stacklevel=3)
         else:
             raise TypeError('Cannot construct {} from {}'.format(type(self), value))
         mask = (1 << self.size) - 1
