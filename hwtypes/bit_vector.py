@@ -111,7 +111,7 @@ class Bit(AbstractBit):
         return f'{type(self).__name__}({self._value})'
 
     def __hash__(self) -> int:
-        return hash(f"{type(self)}{self._value}")
+        return hash((type(self), self._value))
 
     @classmethod
     def random(cls) -> AbstractBit:
