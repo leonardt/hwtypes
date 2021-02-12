@@ -111,7 +111,7 @@ class Bit(AbstractBit):
         return f'{type(self).__name__}({self._value})'
 
     def __hash__(self) -> int:
-        return hash(self._value)
+        return hash((type(self), self._value))
 
     @classmethod
     def random(cls) -> AbstractBit:
@@ -170,7 +170,7 @@ class BitVector(AbstractBitVector):
             return cls.unsized_t[size](value)
 
     def __hash__(self):
-        return hash(self._value)
+        return hash(f"{type(self)}{self._value}")
 
     def __str__(self):
         return str(int(self))
