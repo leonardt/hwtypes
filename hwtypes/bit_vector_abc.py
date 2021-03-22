@@ -118,6 +118,9 @@ class AbstractBitVectorMeta(type): #:(ABCMeta):
         else:
             raise AttributeError('unsized type has no len')
 
+    def __repr__(cls):
+        return cls.__name__
+
 
 class AbstractBit(metaclass=ABCMeta):
     @staticmethod
