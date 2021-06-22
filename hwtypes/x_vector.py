@@ -87,7 +87,7 @@ class XBit(AbstractBit):
 
     def __init__(self, value=x):
         if value is x:
-            self.value = value
+            self._value = value
         elif isinstance(value,XBit):
             self._value = value._value
         elif isinstance(value, bool):
