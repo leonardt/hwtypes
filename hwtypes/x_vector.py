@@ -26,11 +26,11 @@ def int2seq(value : int, n : int):
 def bit_cast(fn : tp.Callable[['XBit', 'XBit'], 'XBit']) -> tp.Callable[['XBit', tp.Any], 'XBit']:
     @functools.wraps(fn)
     def wrapped(self : 'XBit', other : tp.Any) -> 'XBit':
-        if isinstance(other, Bit):
+        if isinstance(other, XBit):
             return fn(self, other)
         else:
             try:
-                other = Bit(other)
+                other = XBit(other)
             except TypeError:
                 return NotImplemented
             return fn(self, other)
@@ -88,7 +88,7 @@ class XBit(AbstractBit):
     def __init__(self, value=x):
         if value is x:
             self.value = value
-        elif isinstance(value, Bit):
+        elif isinstance(value,XBit):
             self._value = value._value
         elif isinstance(value, bool):
             self._value = value
@@ -191,7 +191,7 @@ class XBit(AbstractBit):
         return self._value is x
 
 def _coerce(T : tp.Type['XBitVector'], val : tp.Any) -> 'XBitVector':
-    if not isinstance(val, BitVector):
+    if not isinstance(val,XBitVector):
         return T(val)
     elif val.size != T.size:
         raise InconsistentSizeError('Inconsistent size')
@@ -215,11 +215,11 @@ class XBitVector(AbstractBitVector):
         if value is x:
             self._value = x
             return
-        elif isinstance(value, BitVector):
+        elif isinstance(value, XBitVector):
             if value.size > self.size:
                 warnings.warn('Truncating value from {} to {}'.format(type(value), type(self)), stacklevel=3)
             value = value._value
-        elif isinstance(value, Bit):
+        elif isinstance(value, XBit):
             value = int(bool(value))
         elif isinstance(value, IntegerTypes):
             if value.bit_length() > self.size:
@@ -259,17 +259,17 @@ class XBitVector(AbstractBitVector):
     def value(self):
         return self._value
 
-    def __setitem__(self, index: int, value: tp.Union[bool, Bit, int]):
+    def __setitem__(self, index: int, value: tp.Union[bool, XBit, int]):
         if self._is_x or isinstance(index, slice):
             raise NotImplementedError()
 
         if not isinstance(index, int):
             raise TypeError(f'I ndex must be of type int')
 
-        if not (isinstance(value, bool) or isinstance(value, Bit) or (isinstance(value, int) and value in {0, 1})):
+        if not (isinstance(value, bool) or isinstance(value, XBit) or (isinstance(value, int) and value in {0, 1})):
             raise ValueError("Second argument __setitem__ on a single BitVector index should be a boolean or 0 or 1, not {value}".format(value=value))
 
-        if isinstance(value, Bit) and value._is_x:
+        if isinstance(value,XBit) and value._is_x:
             self._vaue = x
 
         if index < 0:
@@ -279,9 +279,9 @@ class XBitVector(AbstractBitVector):
             raise IndexError()
 
         mask = type(self)(1 << index)
-        self._value = Bit(value).ite(self | mask,  self & ~mask)._value
+        self._value = XBit(value).ite(self | mask,  self & ~mask)._value
 
-    def __getitem__(self, index : tp.Union[int, slice]) -> tp.Union['XBitVector', Bit]:
+    def __getitem__(self, index : tp.Union[int, slice]) -> tp.Union['XBitVector', XBit]:
         if isinstance(index, slice):
             v = self.bits()[index]
             return type(self).unsized_t[len(v)](v)
@@ -290,7 +290,7 @@ class XBitVector(AbstractBitVector):
                 index = self.size+index
             if not (0 <= index < self.size):
                 raise IndexError()
-            return Bit((self._value >> index) & 1)
+            return XBit((self._value >> index) & 1)
         else:
             raise TypeError()
 
@@ -382,7 +382,7 @@ class XBitVector(AbstractBitVector):
         return type(self)(~self.as_uint() + 1)
 
 
-    def adc(self, other: 'XBitVector', carry: XBit) -> tp.Tuple['XBitVector', Bit]:
+    def adc(self, other: 'XBitVector', carry: XBit) -> tp.Tuple['XBitVector',XBit]:
         """
         add with carry
 
@@ -648,7 +648,7 @@ class XUIntVector(XNumVector):
 
 
 class XSIntVector(XNumVector):
-    __hash__ = NumVector.__hash__
+    __hash__ = XNumVector.__hash__
 
     def __int__(self):
         return self.as_sint()
