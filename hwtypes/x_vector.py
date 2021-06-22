@@ -406,18 +406,22 @@ class XBitVector(AbstractBitVector):
         return self.bvne(0).ite(t_branch, f_branch)
 
     @bv_cast
+    @preserve_x_binary
     def bvadd(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() + other.as_uint())
 
     @bv_cast
+    @preserve_x_binary
     def bvsub(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() - other.as_uint())
 
     @bv_cast
+    @preserve_x_binary
     def bvmul(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() * other.as_uint())
 
     @bv_cast
+    @preserve_x_binary
     def bvudiv(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_uint()
         if other == 0:
@@ -425,6 +429,7 @@ class XBitVector(AbstractBitVector):
         return type(self)(self.as_uint() // other)
 
     @bv_cast
+    @preserve_x_binary
     def bvurem(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_uint()
         if other == 0:
@@ -434,6 +439,7 @@ class XBitVector(AbstractBitVector):
     # bvumod
 
     @bv_cast
+    @preserve_x_binary
     def bvsdiv(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_sint()
         if other == 0:
@@ -441,6 +447,7 @@ class XBitVector(AbstractBitVector):
         return type(self)(self.as_sint() // other)
 
     @bv_cast
+    @preserve_x_binary
     def bvsrem(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_sint()
         if other == 0:
@@ -601,6 +608,9 @@ class XBitVector(AbstractBitVector):
         return bool(int(self))
 
     def repeat(self, r):
+        if self._is_x:
+            return type(self).unsized_t[r * self.size]()
+
         r = int(r)
         if r <= 0:
             raise ValueError()
@@ -613,6 +623,10 @@ class XBitVector(AbstractBitVector):
             raise ValueError()
 
         T = type(self).unsized_t
+
+        if self._is_x:
+            return T[self.size + ext]()
+
         return self.concat(T[1](self[-1]).repeat(ext))
 
     def ext(self, ext):
@@ -624,6 +638,9 @@ class XBitVector(AbstractBitVector):
             raise ValueError()
 
         T = type(self).unsized_t
+        if self._is_x:
+            return T[self.size + ext]()
+
         return self.concat(T[ext](0))
 
     @staticmethod
