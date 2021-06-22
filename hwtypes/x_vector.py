@@ -49,8 +49,8 @@ class _X:
 x = _X()
 
 
-def preserve_x_unary(fn: tp.Callable[[_Xvalued], tp.Any])
-        -> tp.Callable[[_Xvalued], tp.Any]:
+def preserve_x_unary(fn: tp.Callable[[_Xvalued], tp.Any]
+        ) -> tp.Callable[[_Xvalued], tp.Any]:
     @functools.wraps(fn)
     def wrapped(self: _Xvalued) -> tp.Any:
         if self._is_x:
@@ -60,8 +60,8 @@ def preserve_x_unary(fn: tp.Callable[[_Xvalued], tp.Any])
     return wrapped
 
 
-def preserve_x_binary(fn: tp.Callable[[_Xvalued, _Xvalued], tp.Any])
-        -> tp.Callable[[_Xvalued, _Xvalued], tp.Any]:
+def preserve_x_binary(fn: tp.Callable[[_Xvalued, _Xvalued], tp.Any]
+        ) -> tp.Callable[[_Xvalued, _Xvalued], tp.Any]:
     @functools.wraps(fn)
     def wrapped(self: _Xvalued, other: _Xvalued) -> tp.Any:
         if self._is_x or other._is_x:
@@ -70,8 +70,8 @@ def preserve_x_binary(fn: tp.Callable[[_Xvalued, _Xvalued], tp.Any])
             return fn(self, other)
     return wrapped
 
-def preserve_x_binary_bit(fn: tp.Callable[[_Xvalued, _Xvalued], AbstractBit])
-        -> tp.Callable[[_Xvalued, _Xvalued], AbstractBit]:
+def preserve_x_binary_bit(fn: tp.Callable[[_Xvalued, _Xvalued], AbstractBit]
+        ) -> tp.Callable[[_Xvalued, _Xvalued], AbstractBit]:
     @functools.wraps(fn)
     def wrapped(self: _Xvalued, other: _Xvalued) -> tp.Any:
         if self._is_x or other._is_x:
@@ -318,63 +318,63 @@ class XBitVector(AbstractBitVector):
 
     @bv_cast
     @preserve_x_binary
-    def bvand(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvand(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() & other.as_uint())
 
     @bv_cast
     @preserve_x_binary
-    def bvor(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvor(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() | other.as_uint())
 
     @bv_cast
-    def bvxor(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvxor(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() ^ other.as_uint())
 
     @bv_cast
     @preserve_x_binary
-    def bvshl(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvshl(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() << other.as_uint())
 
     @bv_cast
     @preserve_x_binary
-    def bvlshr(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvlshr(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() >> other.as_uint())
 
     @bv_cast
     @preserve_x_binary
-    def bvashr(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvashr(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_sint() >> other.as_uint())
 
     @bv_cast
     @preserve_x_binary
-    def bvrol(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvrol(self, other: 'XBitVector') -> 'XBitVector':
         other = (len(self) - other.as_uint()) % len(self)
         return self[other:].concat(self[:other])
 
     @bv_cast
     @preserve_x_binary
-    def bvror(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvror(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_uint() % len(self)
         return self[other:].concat(self[:other])
 
     @bv_cast
     @preserve_x_binary
-    def bvcomp(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvcomp(self, other: 'XBitVector') -> 'XBitVector':
         return type(self).unsized_t[1](self.as_uint() == other.as_uint())
 
     @bv_cast
     @preserve_x_binary_bit
-    def bveq(self, other: 'XBit'): -> 'XBitVector'
+    def bveq(self, other: 'XBit') -> 'XBitVector':
         return self.get_family().Bit(self.as_uint() == other.as_uint())
 
     @bv_cast
     @preserve_x_binary_bit
-    def bvult(self, other: 'XBit'): -> 'XBitVector'
+    def bvult(self, other: 'XBit') -> 'XBitVector':
         return self.get_family().Bit(self.as_uint() < other.as_uint())
 
     @bv_cast
     @preserve_x_binary_bit
-    def bvslt(self, other: 'XBit'): -> 'XBitVector'
+    def bvslt(self, other: 'XBit') -> 'XBitVector':
         return self.get_family().Bit(self.as_sint() < other.as_sint())
 
     @preserve_x_binary
@@ -389,7 +389,8 @@ class XBitVector(AbstractBitVector):
         returns a two element tuple of the form (result, carry)
 
         """
-        if self._is_x o 
+        if self._is_x or other._is_x or carry._is_x:
+            return type(self)(x), self.get_family().Bit(x)
         T = type(self)
         other = _coerce(T, other)
         carry = _coerce(T.unsized_t[1], carry)
@@ -405,26 +406,26 @@ class XBitVector(AbstractBitVector):
         return self.bvne(0).ite(t_branch, f_branch)
 
     @bv_cast
-    def bvadd(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvadd(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() + other.as_uint())
 
     @bv_cast
-    def bvsub(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvsub(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() - other.as_uint())
 
     @bv_cast
-    def bvmul(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvmul(self, other: 'XBitVector') -> 'XBitVector':
         return type(self)(self.as_uint() * other.as_uint())
 
     @bv_cast
-    def bvudiv(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvudiv(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_uint()
         if other == 0:
             return type(self)((1 << self.size) - 1)
         return type(self)(self.as_uint() // other)
 
     @bv_cast
-    def bvurem(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvurem(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_uint()
         if other == 0:
             return self
@@ -433,14 +434,14 @@ class XBitVector(AbstractBitVector):
     # bvumod
 
     @bv_cast
-    def bvsdiv(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvsdiv(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_sint()
         if other == 0:
             return type(self)((1 << self.size) - 1)
         return type(self)(self.as_sint() // other)
 
     @bv_cast
-    def bvsrem(self, other: 'XBitVector'): -> 'XBitVector'
+    def bvsrem(self, other: 'XBitVector') -> 'XBitVector':
         other = other.as_sint()
         if other == 0:
             return self
