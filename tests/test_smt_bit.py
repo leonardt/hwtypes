@@ -51,3 +51,7 @@ def test_ite_fail():
         res = p.ite(t, f)
 
 
+def test_bool():
+    b = SMTBit()
+    with pytest.raises(TypeError):
+        bool(b)

@@ -152,6 +152,9 @@ class SMTBit(AbstractBit):
             )
         )
 
+    def __bool__(self):
+        raise TypeError('SMTBit cannot be converted to bool')
+
 
 def _coerce(T : tp.Type['SMTBitVector'], val : tp.Any) -> 'SMTBitVector':
     if not isinstance(val, SMTBitVector):
