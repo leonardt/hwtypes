@@ -643,11 +643,15 @@ class SMTBitVector(AbstractBitVector):
 #    def __int__(self):
 #        return self.as_uint()
 #
-#    def as_uint(self):
-#        return self._value.bv_unsigned_value()
-#
-#    def as_sint(self):
-#        return self._value.bv_signed_value()
+    def as_uint(self):
+        #Avoids circular import
+        from . import SMTInt
+        return SMTInt(self)
+
+    def as_sint(self):
+        #Avoids circular import
+        from . import SMTInt
+        return SMTInt(self[:-1]) - SMTInt(self & (1<<(self.size-1)))
 #
 #    @classmethod
 #    def random(cls, width):
