@@ -644,10 +644,12 @@ class SMTBitVector(AbstractBitVector):
 #        return self.as_uint()
 #
     def as_uint(self):
+        #Avoids circular import
         from . import SMTInt
         return SMTInt(self)
 
     def as_sint(self):
+        #Avoids circular import
         from . import SMTInt
         return SMTInt(self[:-1]) - SMTInt(self & (1<<(self.size-1)))
 #

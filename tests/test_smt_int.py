@@ -73,6 +73,8 @@ def test_unary_ops(name, fun):
 def test_init_bv():
     SMTInt(SMTBitVector[5]())
     SMTInt(SMTBitVector[5](10))
+    SMTInt(SMTBitVector[5](10).value)
+
 
 def test_as_sint():
     x = SMTBitVector[5](-5)

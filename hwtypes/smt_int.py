@@ -74,6 +74,8 @@ class SMTInt:
         elif isinstance(value, pysmt.fnode.FNode):
             if value.get_type().is_int_type():
                 self._value = value
+            elif value.get_type().is_bv_type():
+                self._value = smt.BVToNatural(value)
             else:
                 raise TypeError(f'Expected int type not {value.get_type()}')
         elif isinstance(value, SMTInt):
