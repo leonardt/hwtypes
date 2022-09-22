@@ -1,6 +1,6 @@
 import itertools as it
 import functools as ft
-import hwtypes as ht
+from .smt_bit_vector import SMTBit, SMTBitVector
 
 import pysmt
 import pysmt.shortcuts as smt
@@ -78,6 +78,8 @@ class SMTInt:
                 raise TypeError(f'Expected int type not {value.get_type()}')
         elif isinstance(value, SMTInt):
             self._value = value._value
+        elif isinstance(value, SMTBitVector):
+            self._value = smt.BVToNatural(value.value)
         elif isinstance(value, bool):
             self._value = smt.Int(int(value))
         elif isinstance(value, int):
@@ -100,66 +102,45 @@ class SMTInt:
     def value(self):
         return self._value
 
-    #neg
-    #sub
-    #add
-    #mul
-    #div
-    #mod
-    #abs
-    #lte
-    #lt
-    #gte
-    #gt
-    #eq
-    #neq
-
     def __neg__(self):
-        return ht.SMTInt(0) - self
+        return SMTInt(0) - self
 
     @int_cast
     def __sub__(self, other: 'SMTInt') -> 'SMTInt':
-        return ht.SMTInt(self.value - other.value)
+        return SMTInt(self.value - other.value)
 
     @int_cast
     def __add__(self, other: 'SMTInt') -> 'SMTInt':
-        return ht.SMTInt(self.value + other.value)
+        return SMTInt(self.value + other.value)
 
     @int_cast
     def __mul__(self, other: 'SMTInt') -> 'SMTInt':
-        return ht.SMTInt(self.value * other.value)
+        return SMTInt(self.value * other.value)
 
     @int_cast
     def __floordiv__(self, other: 'SMTInt') -> 'SMTInt':
-        return ht.SMTInt(smt.Div(self.value, other.value))
+        return SMTInt(smt.Div(self.value, other.value))
 
     @int_cast
-    def __mod__(self, other: 'SMTInt') -> 'SMTInt':
-        return ht.SMTInt(self.value % other.value)
-
-    def __abs__(self):
-        return ht.SMTInt(abs(self.value))
+    def __ge__(self, other: 'SMTInt') -> SMTBit:
+        return SMTBit(self.value >= other.value)
 
     @int_cast
-    def __ge__(self, other: 'SMTInt') -> ht.SMTBit:
-        return ht.SMTBit(self.value >= other.value)
+    def __gt__(self, other: 'SMTInt') -> SMTBit:
+        return SMTBit(self.value > other.value)
 
     @int_cast
-    def __gt__(self, other: 'SMTInt') -> ht.SMTBit:
-        return ht.SMTBit(self.value > other.value)
+    def __le__(self, other: 'SMTInt') -> SMTBit:
+        return SMTBit(self.value <= other.value)
 
     @int_cast
-    def __le__(self, other: 'SMTInt') -> ht.SMTBit:
-        return ht.SMTBit(self.value <= other.value)
+    def __lt__(self, other: 'SMTInt') -> SMTBit:
+        return SMTBit(self.value < other.value)
 
     @int_cast
-    def __lt__(self, other: 'SMTInt') -> ht.SMTBit:
-        return ht.SMTBit(self.value < other.value)
+    def __eq__(self, other: 'SMTInt') -> SMTBit:
+        return SMTBit(smt.Equals(self.value, other.value))
 
     @int_cast
-    def __eq__(self, other: 'SMTInt') -> ht.SMTBit:
-        return ht.SMTBit(smt.Equals(self.value, other.value))
-
-    @int_cast
-    def __ne__(self, other: 'SMTInt') -> ht.SMTBit:
-        return ht.SMTBit(smt.NotEquals(self.value, other.value))
+    def __ne__(self, other: 'SMTInt') -> SMTBit:
+        return SMTBit(smt.NotEquals(self.value, other.value))
