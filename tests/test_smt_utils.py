@@ -19,7 +19,6 @@ def test_fc():
     f_ht = f.to_hwtypes()
     assert isinstance(f_ht, SMTBit)
     f_str = f.serialize()
-    print(f_str)
     assert f_str == \
 '''\
 Implies(
@@ -33,6 +32,19 @@ Implies(
 |   True
 )'''
 
+    f_str = f.serialize(ts='*****', indent='  ')
+    assert f_str == \
+'''\
+*****Implies(
+*****  And(
+*****    (x_0 & y_0),
+*****    Or(
+*****      ((! y_0) & z_0),
+*****      ((! z_0) & x_0)
+*****    )
+*****  ),
+*****  True
+*****)'''
 
 def test_0_len():
     f = utils.And([])
