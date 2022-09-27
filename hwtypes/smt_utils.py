@@ -34,7 +34,7 @@ def _op_to_str(vs, opname, ts, indent):
         f"{ts})"
     ])
 def _check(vs):
-    if not all(isinstance(v, FormulaConstructor) or isinstance(v, SMTBit) for v in vs):
+    if not all(isinstance(v, (FormulaConstructor, SMTBit)) for v in vs):
         raise ValueError("Formula Constructor requires SMTBit or other FormulaConstructors")
 
 class And(FormulaConstructor):

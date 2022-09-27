@@ -19,11 +19,24 @@ def test_fc():
     f_ht = f.to_hwtypes()
     assert isinstance(f_ht, SMTBit)
     f_str = f.serialize()
-    assert isinstance(f_str, str)
+    print(f_str)
+    assert f_str == \
+'''\
+Implies(
+|   And(
+|   |   (x_0 & y_0),
+|   |   Or(
+|   |   |   ((! y_0) & z_0),
+|   |   |   ((! z_0) & x_0)
+|   |   )
+|   ),
+|   True
+)'''
 
 
 def test_0_len():
     f = utils.And([])
-    assert f.to_hwtypes().value.constant_value() == True
+    assert f.to_hwtypes().value.constant_value() is True
     f = utils.Or([])
-    assert f.to_hwtypes().value.constant_value() == False
+    assert f.to_hwtypes().value.constant_value() is False
+
