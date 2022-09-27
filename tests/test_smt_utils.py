@@ -32,7 +32,7 @@ Implies(
 |   True
 )'''
 
-    f_str = f.serialize(ts='*****', indent='  ')
+    f_str = f.serialize(line_prefix='*****', indent='  ')
     assert f_str == \
 '''\
 *****Implies(

@@ -6,9 +6,9 @@ import abc
 _or_reduce = partial(reduce, operator.or_)
 _and_reduce = partial(reduce, operator.and_)
 
-class FormulaConstructor:
+class FormulaConstructor(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def serialize(self, ts, indent):
+    def serialize(self, line_prefix, indent):
         ...
 
     @abc.abstractmethod
@@ -20,18 +20,18 @@ def _to_hwtypes(v):
         return v.to_hwtypes()
     return v
 
-def _value_to_str(v, ts, indent):
+def _value_to_str(v, line_prefix, indent):
     if isinstance(v, FormulaConstructor):
-        return v.serialize(ts, indent)
+        return v.serialize(line_prefix, indent)
     else:
-        return f"{ts}{v.value.serialize()}"
+        return f"{line_prefix}{v.value.serialize()}"
 
-def _op_to_str(vs, opname, ts, indent):
-    new_ts = ts + indent
+def _op_to_str(vs, opname, line_prefix, indent):
+    new_line_prefix = line_prefix + indent
     return "\n".join([
-        f"{ts}{opname}(",
-        ",\n".join([_value_to_str(v, new_ts, indent) for v in vs]),
-        f"{ts})"
+        f"{line_prefix}{opname}(",
+        ",\n".join([_value_to_str(v, new_line_prefix, indent) for v in vs]),
+        f"{line_prefix})"
     ])
 def _check(vs):
     if not all(isinstance(v, (FormulaConstructor, SMTBit)) for v in vs):
@@ -42,8 +42,8 @@ class And(FormulaConstructor):
         _check(values)
         self.values = list(values)
 
-    def serialize(self, ts="", indent="|   "):
-        return _op_to_str(self.values, "And", ts, indent)
+    def serialize(self, line_prefix="", indent="|   "):
+        return _op_to_str(self.values, "And", line_prefix, indent)
 
     def to_hwtypes(self):
         if len(self.values) == 0:
@@ -55,8 +55,8 @@ class Or(FormulaConstructor):
         _check(values)
         self.values = list(values)
 
-    def serialize(self, ts="", indent="|   "):
-        return _op_to_str(self.values, "Or", ts, indent)
+    def serialize(self, line_prefix="", indent="|   "):
+        return _op_to_str(self.values, "Or", line_prefix, indent)
 
     def to_hwtypes(self):
         if len(self.values)==0:
@@ -69,8 +69,8 @@ class Implies(FormulaConstructor):
         self.p = p
         self.q = q
 
-    def serialize(self, ts="", indent="|   "):
-        return _op_to_str((self.p, self.q), "Implies", ts, indent)
+    def serialize(self, line_prefix="", indent="|   "):
+        return _op_to_str((self.p, self.q), "Implies", line_prefix, indent)
 
     def to_hwtypes(self):
         return (~_to_hwtypes(self.p)) | _to_hwtypes(self.q)
