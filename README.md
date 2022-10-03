@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/leonardt/hwtypes.svg?branch=master)](https://travis-ci.org/leonardt/hwtypes)
+[![Linux Test](https://github.com/leonardt/hwtypes/actions/workflows/linux-test.yml/badge.svg)](https://github.com/leonardt/hwtypes/actions/workflows/linux-test.yml)
 
 
 # Install
