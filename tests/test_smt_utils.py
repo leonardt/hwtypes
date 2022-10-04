@@ -1,16 +1,22 @@
 from hwtypes import SMTBit
 from hwtypes import smt_utils as utils
 
+def _var_idx(v):
+    return v._name[2:]
+
 def test_fc():
     x = SMTBit(prefix='x')
     y = SMTBit(prefix='y')
     z = SMTBit(prefix='z')
+    XI = _var_idx(x)
+    YI = _var_idx(y)
+    ZI = _var_idx(z)
     f = utils.Implies(
         utils.And([
-            x & y,
+            x,
             utils.Or([
-                ~y & z,
-                ~z & x,
+                ~y,
+                ~z,
             ]),
         ]),
         SMTBit(1)
@@ -23,28 +29,27 @@ def test_fc():
 '''\
 Implies(
 |   And(
-|   |   (x_0 & y_0),
+|   |   x_XI,
 |   |   Or(
-|   |   |   ((! y_0) & z_0),
-|   |   |   ((! z_0) & x_0)
+|   |   |   (! y_YI),
+|   |   |   (! z_ZI)
 |   |   )
 |   ),
 |   True
-)'''
-
+)'''.replace("XI", XI).replace("YI", YI).replace("ZI", ZI)
     f_str = f.serialize(line_prefix='*****', indent='  ')
     assert f_str == \
 '''\
 *****Implies(
 *****  And(
-*****    (x_0 & y_0),
+*****    x_XI,
 *****    Or(
-*****      ((! y_0) & z_0),
-*****      ((! z_0) & x_0)
+*****      (! y_YI),
+*****      (! z_ZI)
 *****    )
 *****  ),
 *****  True
-*****)'''
+*****)'''.replace("XI", XI).replace("YI", YI).replace("ZI", ZI)
 
 def test_0_len():
     f = utils.And([])
