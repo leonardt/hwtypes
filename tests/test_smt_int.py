@@ -1,4 +1,4 @@
-from hwtypes import SMTInt, SMTBitVector
+from hwtypes import SMTInt, SMTBitVector, SMTBit
 import pysmt.shortcuts as smt
 import pytest
 
@@ -87,3 +87,8 @@ def test_as_uint():
     x_int = x.as_uint()
     assert isinstance(x_int, SMTInt)
     assert x.as_uint().value.constant_value() == 5
+
+def test_name_table_bug():
+    SMTBit(prefix='x')
+    SMTInt(prefix='x')
+

@@ -1,39 +1,14 @@
-import itertools as it
 import functools as ft
-from .smt_bit_vector import SMTBit, SMTBitVector
+from .smt_bit_vector import SMTBit, SMTBitVector, _gen_name, _name_re, _name_table, SMYBOLIC, AUTOMATIC
 
 import pysmt
 import pysmt.shortcuts as smt
 from pysmt.typing import INT
 
-from collections import defaultdict
-import re
 import warnings
-import weakref
 
 __ALL__ = ['SMTInt']
 
-_var_counters = defaultdict(it.count)
-_name_table = weakref.WeakValueDictionary()
-
-def _gen_name(prefix='V'):
-    name = f'{prefix}_{next(_var_counters[prefix])}'
-    while name in _name_table:
-        name = f'{prefix}_{next(_var_counters[prefix])}'
-    return name
-
-_name_re = re.compile(r'V_\d+')
-
-class _SMYBOLIC:
-    def __repr__(self):
-        return 'SYMBOLIC'
-
-class _AUTOMATIC:
-    def __repr__(self):
-        return 'AUTOMATIC'
-
-SMYBOLIC = _SMYBOLIC()
-AUTOMATIC = _AUTOMATIC()
 
 def int_cast(fn):
     @ft.wraps(fn)
