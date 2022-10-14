@@ -26,12 +26,14 @@ jobs:
         python setup.py install
         cd ..
         pip install -r requirements.txt
-        pip install python-coveralls
         pip install pytest-cov
+        pip install coveralls
         pip install -e .
     - name: Test with pytest
       run: |
         py.test --cov=hwtypes tests/
     - name: Coverage
       run: |
-        coveralls
+        coveralls --service=github
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -92,3 +92,16 @@ def test_name_table_bug():
     SMTBit(prefix='x')
     SMTInt(prefix='x')
 
+bin_ops_r = dict(
+    sub = lambda x,y: x-y,
+    add = lambda x,y: x+y,
+    mul = lambda x,y: x*y,
+    div = lambda x,y: x//y,
+)
+
+@pytest.mark.parametrize('name, op', bin_ops_r.items())
+def test_r_ops(name, op):
+    res = op(5, SMTInt(2))
+    assert isinstance(res, SMTInt)
+    assert res.value.is_constant()
+    assert op(5, 2) == res.value.constant_value()

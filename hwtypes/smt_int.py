@@ -87,16 +87,30 @@ class SMTInt:
         return SMTInt(self.value - other.value)
 
     @int_cast
+    def __rsub__(self, other: 'SMTInt') -> 'SMTInt':
+        return SMTInt(other.value - self.value)
+
+    @int_cast
     def __add__(self, other: 'SMTInt') -> 'SMTInt':
         return SMTInt(self.value + other.value)
+
+    def __radd__(self, other: 'SMTInt') -> 'SMTInt':
+        return self + other
 
     @int_cast
     def __mul__(self, other: 'SMTInt') -> 'SMTInt':
         return SMTInt(self.value * other.value)
 
+    def __rmul__(self, other: 'SMTInt') -> 'SMTInt':
+        return self * other
+
     @int_cast
     def __floordiv__(self, other: 'SMTInt') -> 'SMTInt':
         return SMTInt(smt.Div(self.value, other.value))
+
+    @int_cast
+    def __rfloordiv__(self, other: 'SMTInt') -> 'SMTInt':
+        return SMTInt(smt.Div(other.value, self.value))
 
     @int_cast
     def __ge__(self, other: 'SMTInt') -> SMTBit:
