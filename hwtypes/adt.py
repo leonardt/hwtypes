@@ -6,7 +6,7 @@ import warnings
 from .adt_meta import TupleMeta, AnonymousProductMeta, ProductMeta
 from .adt_meta import SumMeta, TaggedUnionMeta, EnumMeta, is_adt_type
 
-__all__  = ['Tuple', 'Product', 'Sum', 'Enum']
+__all__  = ['Tuple', 'Product', 'Sum', 'Enum', 'TaggedUnion']
 __all__ += ['new_instruction', 'is_adt_type']
 
 #special sentinal value
