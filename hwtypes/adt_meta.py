@@ -14,7 +14,6 @@ __all__ = [
     'BoundMeta', 'TupleMeta', 'ProductMeta',
     'SumMeta', 'TaggedUnionMeta', 'EnumMeta']
 
-
 def _is_dunder(name):
     return (len(name) > 4
             and name[:2] == name[-2:] == '__'
@@ -325,7 +324,7 @@ class BoundMeta(_GetitemSyntax): #, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def fields_dict(cls):
+    def field_dict(cls):
         pass
 
     @property
