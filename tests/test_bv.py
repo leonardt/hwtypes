@@ -127,3 +127,28 @@ def test_operator_by_0(op, reference):
     I0, I1 = BitVector.random(5), 0
     expected = unsigned(reference(int(I0), int(I1)), 5)
     assert expected == int(op(I0, I1))
+
+
+
+@pytest.mark.parametrize("op", [
+    operator.add,
+    operator.mul,
+    operator.sub,
+    operator.floordiv,
+    operator.mod,
+    operator.and_,
+    operator.or_,
+    operator.xor,
+    operator.lshift,
+    operator.rshift,
+    operator.eq,
+    operator.ne,
+    operator.lt,
+    operator.le,
+    operator.gt,
+    operator.ge,
+    ])
+def test_coercion(op):
+    a = BitVector.random(16)
+    b = BitVector.random(16)
+    assert op(a, b) == op(int(a), b) == op(a, int(b))

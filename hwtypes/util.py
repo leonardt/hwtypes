@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from collections.abc import Mapping, MutableMapping
 import typing as tp
+import types
 
 class FrozenDict(Mapping):
     __slots__ = '_d', '_hash'
@@ -124,6 +125,28 @@ class TypedProperty:
     def deleter(self, fdel):
         return type(self)(self.T)(self.fget, self.fset, fdel, self.__doc__)
 
+class Method:
+    '''
+        Method descriptor which automatically sets the name of the bound function
+    '''
+    def __init__(self, m):
+        self.m = m
+
+    def __get__(self, obj, objtype=None):
+        if obj is not None:
+            return types.MethodType(self.m, obj)
+        else:
+            return self.m
+
+    def __set_name__(self, owner, name):
+        self.m.__name__ = name
+        self.m.__qualname__ = owner.__qualname__ + '.' + name
+
+
+    def __call__(self, *args, **kwargs):
+        # HACK
+        # need this because of vcall works
+        return self.m(*args, **kwargs)
 
 def _issubclass(sub : tp.Any, parent : type) -> bool:
     try:
