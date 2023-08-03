@@ -3,6 +3,7 @@ import functools as ft
 import inspect
 import types
 
+from .util import Method
 from .bit_vector_abc import InconsistentSizeError
 from .bit_vector_abc import BitVectorMeta, AbstractBitVector, AbstractBit
 
@@ -172,7 +173,7 @@ def build_VCall(select, m0, m1):
             if v0 is NotImplemented or v0 is NotImplemented:
                 return NotImplemented
             return select.ite(v0, v1)
-        return VCall
+        return Method(VCall)
 
 
 def get_branch_type(branch):
