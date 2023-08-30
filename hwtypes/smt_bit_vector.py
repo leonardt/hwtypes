@@ -552,10 +552,10 @@ class SMTBitVector(AbstractBitVector):
     __rmod__ = dispatch_roper(__mod__)
 
     __eq__ = dispatch_oper(bveq)
-    __ne__ = dispatch_oper(AbstractBitVector.bvne)
-    __ge__ = dispatch_oper(AbstractBitVector.bvuge)
-    __gt__ = dispatch_oper(AbstractBitVector.bvugt)
-    __le__ = dispatch_oper(AbstractBitVector.bvule)
+    __ne__ = dispatch_oper(bvne)
+    __ge__ = dispatch_oper(bvuge)
+    __gt__ = dispatch_oper(bvugt)
+    __le__ = dispatch_oper(bvule)
     __lt__ = dispatch_oper(bvult)
 
     @int_cast
